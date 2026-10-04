@@ -1,0 +1,75 @@
+package com.example.alertcity.ui.navigation
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.alertcity.ui.screens.CrearReportesScreen
+import com.example.alertcity.ui.screens.ListaReportesScreen
+import com.example.alertcity.ui.viewmodel.ReporteViewModel
+
+
+@Composable
+fun AppNavGraph(viewModel: ReporteViewModel) {
+    val navController = rememberNavController()
+
+    Scaffold(
+        bottomBar = { MenuNavegacionInferior(navController) }
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = "inicio",
+            modifier = Modifier.padding(padding)
+        ) {
+            composable("inicio") { ListaReportesScreen(viewModel) }
+            composable("crear") {
+                CrearReportesScreen(
+                    onGuardar = { t, d, c, u, h ->
+                        viewModel.crearReporte(t, d, c, u, h)
+                        navController.navigate("inicio") { popUpTo(0) }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MenuNavegacionInferior(navController: NavHostController) {
+    NavigationBar {
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry?.destination?.route
+
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
+            label = { Text("Inicio") },
+            selected = currentRoute == "inicio",
+            onClick = {
+                navController.navigate("inicio") {
+                    popUpTo(navController.graph.startDestinationId)
+                    launchSingleTop = true
+                }
+            }
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Add, contentDescription = "Reportar") },
+            label = { Text("Reportar") },
+            selected = currentRoute == "crear",
+            onClick = {
+                navController.navigate("crear") {
+                    popUpTo(navController.graph.startDestinationId)
+                    launchSingleTop = true
+                }
+            }
+        )
+    }
+}
