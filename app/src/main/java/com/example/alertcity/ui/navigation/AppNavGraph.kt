@@ -9,14 +9,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.alertcity.ui.screens.CrearReportesScreen
+import com.example.alertcity.ui.screens.DetalleReporteScreen
 import com.example.alertcity.ui.screens.ListaReportesScreen
 import com.example.alertcity.ui.viewmodel.ReporteViewModel
-
 
 @Composable
 fun AppNavGraph(viewModel: ReporteViewModel) {
@@ -30,13 +32,34 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
             startDestination = "inicio",
             modifier = Modifier.padding(padding)
         ) {
-            composable("inicio") { ListaReportesScreen(viewModel) }
+            composable("inicio") {
+                ListaReportesScreen(
+                    viewModel = viewModel,
+                    onReporteClick = { id ->
+                        navController.navigate("detalle/$id")
+                    }
+                )
+            }
+
             composable("crear") {
                 CrearReportesScreen(
-                    onGuardar = { t, d, c, u, h ->
-                        viewModel.crearReporte(t, d, c, u, h)
+                    onGuardar = { t, d, c, u, h, foto, ubi ->
+                        viewModel.crearReporte(t, d, c, u, h, foto, ubi)
                         navController.navigate("inicio") { popUpTo(0) }
                     }
+                )
+            }
+
+            composable(
+                route = "detalle/{reporteId}",
+                arguments = listOf(navArgument("reporteId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val reporteId = backStackEntry.arguments?.getString("reporteId")
+                val reporteSeleccionado = reporteId?.let { viewModel.obtenerReportePorId(it) }
+
+                DetalleReporteScreen(
+                    reporte = reporteSeleccionado,
+                    onBack = { navController.popBackStack() }
                 )
             }
         }
@@ -52,7 +75,7 @@ fun MenuNavegacionInferior(navController: NavHostController) {
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
             label = { Text("Inicio") },
-            selected = currentRoute == "inicio",
+            selected = currentRoute == "inicio" || currentRoute?.startsWith("detalle") == true,
             onClick = {
                 navController.navigate("inicio") {
                     popUpTo(navController.graph.startDestinationId)

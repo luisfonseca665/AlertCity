@@ -12,20 +12,24 @@ import kotlinx.coroutines.launch
 class ReporteViewModel(
     private val repository: ReporteRepository = FakeReporteRepository()
 ) : ViewModel() {
-
     val listaReportes = repository.obtenerReportes()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun crearReporte(titulo: String, desc: String, cat: String, urgente: Boolean, hora: String) {
+    fun crearReporte(titulo: String, desc: String, cat: String, urgente: Boolean, hora: String, fotoUri: String?, ubicacion: String?) {
         viewModelScope.launch {
             val nuevo = Reporte(
                 titulo = titulo,
                 descripcion = desc,
                 categoria = cat,
                 esUrgente = urgente,
-                hora = hora
+                hora = hora,
+                fotoUri = fotoUri,
+                ubicacion = ubicacion
             )
             repository.guardarReporte(nuevo)
         }
+    }
+    fun obtenerReportePorId(id: String): Reporte? {
+        return listaReportes.value.find { it.id == id }
     }
 }

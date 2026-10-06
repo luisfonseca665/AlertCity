@@ -1,3 +1,8 @@
 <resources>
-    <string name="app_name">AlertCity</string>
+    <string name="app_name">Ciudad Alerta</string>
+    <string name="greeting">Hola, Luis Enrique</string>
+    <string name="location">📍 Uriangato, Gto.</string>
+    <string name="my_reports">Mis Reportes</string>
+    <string name="no_reports">No hay reportes aún.</string>
+    <string name="status_sent">Estado: Enviado</string>
 </resources>
