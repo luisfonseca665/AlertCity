@@ -25,8 +25,6 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
     val reportes by viewModel.listaReportes.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-
-        // --- 1. CABECERA DE PERFIL DE USUARIO (Limpia con Ícono) ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -57,7 +55,6 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
             }
         }
 
-        // --- 2. TARJETA DE RESUMEN (DASHBOARD) ---
         ElevatedCard(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -80,7 +77,6 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
             }
         }
 
-        // --- 3. LISTA DE REPORTES ---
         Text(
             text = stringResource(id = R.string.my_reports),
             style = MaterialTheme.typography.titleMedium,

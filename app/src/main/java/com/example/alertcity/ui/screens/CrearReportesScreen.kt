@@ -164,7 +164,6 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
         }
 
         Spacer(modifier = Modifier.weight(1f))
-
         Button(
             onClick = {
                 val horaFmt = String.format(Locale.getDefault(), "%02d:%02d", timeState.hour, timeState.minute)

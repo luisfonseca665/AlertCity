@@ -50,7 +50,6 @@ fun DetalleReporteScreen(
                 .fillMaxSize()
         ) {
             Text(text = reporte.titulo, style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(8.dp))
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = "Estatus: ${reporte.estado.etiqueta}", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
