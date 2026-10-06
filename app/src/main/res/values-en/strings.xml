@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Alert CIty</string>
+    <string name="greeting">Hello</string>
+    <string name="location">📍 Uriangato, Gto.</string>
+    <string name="my_reports">My Reports</string>
+    <string name="no_reports">No reports yet.</string>
+    <string name="status_sent">Status: Sent</string>
+</resources>
