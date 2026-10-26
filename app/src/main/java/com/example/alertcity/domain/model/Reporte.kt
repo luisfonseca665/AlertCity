@@ -1,16 +1,10 @@
 package com.example.alertcity.domain.model
 
-
 import java.util.UUID
 
-enum class EstadoReporte(val etiqueta: String, val progreso: Float) {
-    ENVIADO("Enviado", 0.25f),
-    REVISION("En Revisión", 0.50f),
-    EN_PROCESO("Atendiendo", 0.75f),
-    RESUELTO("Resuelto", 1.0f)
-}
 data class Reporte(
-    val id: String = UUID.randomUUID().toString(),
+    val idReporte: String = UUID.randomUUID().toString(),
+    val idUsuario: String = "1",
     val titulo: String,
     val descripcion: String,
     val categoria: String,

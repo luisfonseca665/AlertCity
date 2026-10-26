@@ -6,7 +6,7 @@ import com.example.alertcity.domain.repository.ReporteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 
-class FakeReporteRepository : ReporteRepository {
+abstract class FakeReporteRepository : ReporteRepository {
     companion object {
         private val reportesEnMemoria = MutableStateFlow<List<Reporte>>(
             listOf(
@@ -22,9 +22,9 @@ class FakeReporteRepository : ReporteRepository {
         )
     }
 
-    override fun obtenerReportes(): Flow<List<Reporte>> = reportesEnMemoria
+    override fun getAllReports(): Flow<List<Reporte>> = reportesEnMemoria
 
-    override suspend fun guardarReporte(reporte: Reporte) {
+    override suspend fun saveReport(reporte: Reporte) {
         reportesEnMemoria.value = reportesEnMemoria.value + reporte
     }
 }

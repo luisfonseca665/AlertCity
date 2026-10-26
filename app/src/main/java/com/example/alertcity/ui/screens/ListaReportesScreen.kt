@@ -91,7 +91,7 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
             LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
                 items(reportes) { reporte ->
                     ElevatedCard(
-                        onClick = { onReporteClick(reporte.id) },
+                        onClick = { onReporteClick(reporte.idReporte) },
                         modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth(),
                         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                     ) {

@@ -68,7 +68,9 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
             }
 
             composable("historico") {
-                val historicoViewModel: HistoricoReportesViewModel = viewModel()
+                val historicoViewModel: HistoricoReportesViewModel = viewModel(
+                    factory = HistoricoReportesViewModel.Factory
+                )
                 HistoricoReportesScreen(
                     viewModel = historicoViewModel,
                     onReporteClick = { id ->
@@ -81,7 +83,9 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
                 route = "detalle_historico/{reporteId}",
                 arguments = listOf(navArgument("reporteId") { type = NavType.StringType })
             ) { backStackEntry ->
-                val historicoViewModel: HistoricoReportesViewModel = viewModel()
+                val historicoViewModel: HistoricoReportesViewModel = viewModel(
+                    factory = HistoricoReportesViewModel.Factory
+                )
                 val reporteId = backStackEntry.arguments?.getString("reporteId")
                 val reporteSeleccionado = reporteId?.let { historicoViewModel.obtenerReportePorId(it) }
 
