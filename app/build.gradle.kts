@@ -62,4 +62,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    // Mapa interactivo OpenStreetMap (sin necesidad de API Key)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 }
