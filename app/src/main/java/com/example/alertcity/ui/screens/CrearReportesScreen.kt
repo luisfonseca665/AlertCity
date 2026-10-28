@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,19 +19,20 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
+import com.example.alertcity.ui.viewmodel.CrearReporteViewModel
 import java.io.File
-import java.util.Calendar
 import java.util.Locale
 
 fun crearUriTemporal(context: Context): Uri {
@@ -84,56 +86,32 @@ fun obtenerCoordenadasDispositivo(context: Context): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, String?, String?) -> Unit) {
+fun CrearReportesScreen(
+    viewModel: CrearReporteViewModel,
+    onReporteGuardado: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-
-    var titulo by remember { mutableStateOf("") }
-    var descripcion by remember { mutableStateOf("") }
-    var urgente by remember { mutableStateOf(false) }
-
-    val categorias = listOf(
-        "Baches y Vialidad",
-        "Alumbrado Público",
-        "Fugas de Agua",
-        "Basura y Limpieza",
-        "Seguridad y Vandalismo",
-        "Parques y Áreas Verdes",
-        "Ruido Excesivo",
-        "Animales en Abandono",
-        "Otro"
-    )
-    var categoria by remember { mutableStateOf(categorias.first()) }
-    var categoriaExpandida by remember { mutableStateOf(false) }
-
-    // Hora actual por defecto
-    val calendario = remember { Calendar.getInstance() }
-    val timeState = rememberTimePickerState(
-        initialHour = calendario.get(Calendar.HOUR_OF_DAY),
-        initialMinute = calendario.get(Calendar.MINUTE),
-        is24Hour = true
-    )
-    var mostrarTimePicker by remember { mutableStateOf(false) }
-
-    var fotoUri by remember { mutableStateOf<Uri?>(null) }
-    var tempUri by remember { mutableStateOf<Uri?>(null) }
-    var mostrarOpcionesFoto by remember { mutableStateOf(false) }
-    var ubicacion by remember { mutableStateOf<String?>(null) }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
-            fotoUri = copiarAAlmacenamientoInterno(context, uri)
+            val uriInterna = copiarAAlmacenamientoInterno(context, uri)
+            viewModel.onFotoCapturada(uriInterna.toString())
         }
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
-        if (exito && tempUri != null) {
-            fotoUri = copiarAAlmacenamientoInterno(context, tempUri!!)
+        val tempUriActual = viewModel.uiState.value.tempUri
+        if (exito && tempUriActual != null) {
+            val uriInterna = copiarAAlmacenamientoInterno(context, Uri.parse(tempUriActual))
+            viewModel.onFotoCapturada(uriInterna.toString())
         }
     }
 
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedido ->
         if (concedido) {
-            ubicacion = obtenerCoordenadasDispositivo(context)
+            val coordenadas = obtenerCoordenadasDispositivo(context)
+            viewModel.onUbicacionObtenida(coordenadas)
         }
     }
 
@@ -148,8 +126,8 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = titulo,
-            onValueChange = { titulo = it },
+            value = uiState.titulo,
+            onValueChange = { viewModel.onTituloChange(it) },
             label = { Text("Incidencia") },
             placeholder = { Text("Ej. Lámpara rota en parque central") },
             modifier = Modifier.fillMaxWidth()
@@ -158,8 +136,8 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = descripcion,
-            onValueChange = { descripcion = it },
+            value = uiState.descripcion,
+            onValueChange = { viewModel.onDescripcionChange(it) },
             label = { Text("Descripción") },
             placeholder = { Text("Detalla lo que ocurre...") },
             modifier = Modifier.fillMaxWidth(),
@@ -170,31 +148,28 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
 
         // Selector de Categoría (Dropdown)
         ExposedDropdownMenuBox(
-            expanded = categoriaExpandida,
-            onExpandedChange = { categoriaExpandida = it },
+            expanded = uiState.categoriaExpandida,
+            onExpandedChange = { viewModel.onCategoriaExpandidaChange(it) },
             modifier = Modifier.fillMaxWidth()
         ) {
             OutlinedTextField(
-                value = categoria,
+                value = uiState.categoria,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Categoría del problema") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoriaExpandida) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = uiState.categoriaExpandida) },
                 modifier = Modifier
                     .menuAnchor()
                     .fillMaxWidth()
             )
             ExposedDropdownMenu(
-                expanded = categoriaExpandida,
-                onDismissRequest = { categoriaExpandida = false }
+                expanded = uiState.categoriaExpandida,
+                onDismissRequest = { viewModel.onCategoriaExpandidaChange(false) }
             ) {
-                categorias.forEach { cat ->
+                uiState.categorias.forEach { cat ->
                     DropdownMenuItem(
                         text = { Text(cat) },
-                        onClick = {
-                            categoria = cat
-                            categoriaExpandida = false
-                        }
+                        onClick = { viewModel.onCategoriaChange(cat) }
                     )
                 }
             }
@@ -208,7 +183,7 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedButton(
-                onClick = { mostrarTimePicker = true },
+                onClick = { viewModel.onMostrarTimePickerChange(true) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
@@ -216,14 +191,17 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
                     contentDescription = "Hora",
                     modifier = Modifier.padding(end = 8.dp)
                 )
-                Text("Hora del incidente: ${String.format(Locale.getDefault(), "%02d:%02d", timeState.hour, timeState.minute)}")
+                Text("Hora del incidente: ${uiState.horaFormateada}")
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = urgente, onCheckedChange = { urgente = it })
+            Checkbox(
+                checked = uiState.urgente,
+                onCheckedChange = { viewModel.onUrgenteChange(it) }
+            )
             Text("Marcar como urgente", style = MaterialTheme.typography.bodyMedium)
         }
 
@@ -235,11 +213,11 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
-                onClick = { mostrarOpcionesFoto = true },
+                onClick = { viewModel.onMostrarOpcionesFotoChange(true) },
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.CameraAlt, contentDescription = "Foto", modifier = Modifier.padding(end = 4.dp))
-                Text(if (fotoUri != null) "Cambiar Foto" else "Evidencia")
+                Text(if (uiState.fotoUri != null) "Cambiar Foto" else "Evidencia")
             }
 
             OutlinedButton(
@@ -247,7 +225,7 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.LocationOn, contentDescription = "GPS", modifier = Modifier.padding(end = 4.dp))
-                Text(if (ubicacion != null) "Ubicación OK" else "Obtener GPS")
+                Text(if (uiState.ubicacion != null) "Ubicación OK" else "Obtener GPS")
             }
         }
 
@@ -258,9 +236,9 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (fotoUri != null) {
+            uiState.fotoUri?.let { fotoActual ->
                 AsyncImage(
-                    model = fotoUri,
+                    model = fotoActual,
                     contentDescription = "Evidencia Capturada",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -270,7 +248,7 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
                 )
             }
 
-            if (ubicacion != null) {
+            uiState.ubicacion?.let { ubicacionActual ->
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -290,7 +268,7 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
                             modifier = Modifier.size(32.dp)
                         )
                         Text(
-                            text = ubicacion!!,
+                            text = ubicacionActual,
                             style = MaterialTheme.typography.labelSmall,
                             modifier = Modifier.padding(top = 4.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -303,20 +281,9 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = {
-                val horaFmt = String.format(Locale.getDefault(), "%02d:%02d", timeState.hour, timeState.minute)
-                onGuardar(
-                    titulo,
-                    descripcion,
-                    categoria,
-                    urgente,
-                    horaFmt,
-                    fotoUri?.toString(),
-                    ubicacion
-                )
-            },
+            onClick = { viewModel.guardarReporte(onReporteGuardado) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = titulo.isNotBlank() && descripcion.isNotBlank()
+            enabled = uiState.formularioValido
         ) {
             Text("Guardar Reporte", style = MaterialTheme.typography.titleMedium)
         }
@@ -324,38 +291,57 @@ fun CrearReportesScreen(onGuardar: (String, String, String, Boolean, String, Str
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    if (mostrarTimePicker) {
+    if (uiState.mostrarTimePicker) {
+        val timeState = rememberTimePickerState(
+            initialHour = uiState.hora,
+            initialMinute = uiState.minuto,
+            is24Hour = true
+        )
         AlertDialog(
-            onDismissRequest = { mostrarTimePicker = false },
-            confirmButton = { TextButton(onClick = { mostrarTimePicker = false }) { Text("OK") } },
+            onDismissRequest = { viewModel.onMostrarTimePickerChange(false) },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onConfirmarHora(timeState.hour, timeState.minute) }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.onMostrarTimePickerChange(false) }
+                ) {
+                    Text("Cancelar")
+                }
+            },
             text = { TimePicker(state = timeState) }
         )
     }
 
-    if (mostrarOpcionesFoto) {
+    if (uiState.mostrarOpcionesFoto) {
         AlertDialog(
-            onDismissRequest = { mostrarOpcionesFoto = false },
+            onDismissRequest = { viewModel.onMostrarOpcionesFotoChange(false) },
             title = { Text("Adjuntar Evidencia") },
             text = {
                 Column {
                     TextButton(onClick = {
-                        mostrarOpcionesFoto = false
+                        viewModel.onMostrarOpcionesFotoChange(false)
                         try {
-                            tempUri = crearUriTemporal(context)
-                            tempUri?.let { cameraLauncher.launch(it) }
+                            val nuevoTempUri = crearUriTemporal(context)
+                            viewModel.onTempUriGenerada(nuevoTempUri.toString())
+                            cameraLauncher.launch(nuevoTempUri)
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
                     }) { Text("Tomar Foto con Cámara") }
 
                     TextButton(onClick = {
-                        mostrarOpcionesFoto = false
-                        galleryLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        viewModel.onMostrarOpcionesFotoChange(false)
+                        galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }) { Text("Elegir de Galería") }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { mostrarOpcionesFoto = false }) { Text("Cancelar") }
+                TextButton(onClick = { viewModel.onMostrarOpcionesFotoChange(false) }) { Text("Cancelar") }
             }
         )
     }

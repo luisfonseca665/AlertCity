@@ -1,42 +1,48 @@
 package com.example.alertcity.ui.viewmodel
 
-import android.text.Editable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.alertcity.AlertCityApp
-import com.example.alertcity.data.repository.RoomReporteRepository
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import okhttp3.Call
+
+data class ListaReportesUiState(
+    val reportes: List<Reporte> = emptyList(),
+    val totalReportes: Int = 0,
+    val totalUrgentes: Int = 0
+)
 
 class ReporteViewModel(
     private val repository: ReporteRepository
 ) : ViewModel() {
-    val listaReportes = repository.getAllReports()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun crearReporte(titulo: String, desc: String, cat: String, urgente: Boolean, hora: String, fotoUri: String?, ubicacion: String?) {
+    private val _uiState = MutableStateFlow(ListaReportesUiState())
+    val uiState: StateFlow<ListaReportesUiState> = _uiState.asStateFlow()
+
+    init {
         viewModelScope.launch {
-            val nuevo = Reporte(
-                titulo = titulo,
-                descripcion = desc,
-                categoria = cat,
-                esUrgente = urgente,
-                hora = hora,
-                fotoUri = fotoUri,
-                ubicacion = ubicacion
-            )
-            repository.saveReport(nuevo)
+            repository.getAllReports().collect { lista ->
+                _uiState.update {
+                    it.copy(
+                        reportes = lista,
+                        totalReportes = lista.size,
+                        totalUrgentes = lista.count { reporte -> reporte.esUrgente }
+                    )
+                }
+            }
         }
     }
+
     fun obtenerReportePorId(id: String): Reporte? {
-        return listaReportes.value.find { it.idReporte == id }
+        return _uiState.value.reportes.find { it.idReporte == id }
     }
 
     companion object {

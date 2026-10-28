@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,8 +20,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.alertcity.ui.screens.CrearReportesScreen
 import com.example.alertcity.ui.screens.DetalleReporteScreen
-import com.example.alertcity.ui.screens.ListaReportesScreen
 import com.example.alertcity.ui.screens.HistoricoReportesScreen
+import com.example.alertcity.ui.screens.ListaReportesScreen
+import com.example.alertcity.ui.viewmodel.CrearReporteViewModel
 import com.example.alertcity.ui.viewmodel.HistoricoReportesViewModel
 import com.example.alertcity.ui.viewmodel.ReporteViewModel
 
@@ -46,9 +48,12 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
             }
 
             composable("crear") {
+                val crearReporteViewModel: CrearReporteViewModel = viewModel(
+                    factory = CrearReporteViewModel.Factory
+                )
                 CrearReportesScreen(
-                    onGuardar = { t, d, c, u, h, foto, ubi ->
-                        viewModel.crearReporte(t, d, c, u, h, foto, ubi)
+                    viewModel = crearReporteViewModel,
+                    onReporteGuardado = {
                         navController.navigate("inicio") { popUpTo(0) }
                     }
                 )
@@ -58,8 +63,9 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
                 route = "detalle/{reporteId}",
                 arguments = listOf(navArgument("reporteId") { type = NavType.StringType })
             ) { backStackEntry ->
+                val uiState by viewModel.uiState.collectAsState()
                 val reporteId = backStackEntry.arguments?.getString("reporteId")
-                val reporteSeleccionado = reporteId?.let { viewModel.obtenerReportePorId(it) }
+                val reporteSeleccionado = uiState.reportes.find { it.idReporte == reporteId }
 
                 DetalleReporteScreen(
                     reporte = reporteSeleccionado,
@@ -86,8 +92,9 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
                 val historicoViewModel: HistoricoReportesViewModel = viewModel(
                     factory = HistoricoReportesViewModel.Factory
                 )
+                val uiState by historicoViewModel.uiState.collectAsState()
                 val reporteId = backStackEntry.arguments?.getString("reporteId")
-                val reporteSeleccionado = reporteId?.let { historicoViewModel.obtenerReportePorId(it) }
+                val reporteSeleccionado = uiState.reportes.find { it.idReporte == reporteId }
 
                 DetalleReporteScreen(
                     reporte = reporteSeleccionado,

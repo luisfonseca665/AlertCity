@@ -22,7 +22,7 @@ import com.example.alertcity.ui.viewmodel.ReporteViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) -> Unit) {
-    val reportes by viewModel.listaReportes.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(
@@ -65,13 +65,12 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "${reportes.size}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(text = "${uiState.totalReportes}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                     Text(text = "Reportes", style = MaterialTheme.typography.labelMedium)
                 }
                 Divider(modifier = Modifier.height(40.dp).width(1.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val urgentes = reportes.count { it.esUrgente }
-                    Text(text = "$urgentes", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.error)
+                    Text(text = "${uiState.totalUrgentes}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.error)
                     Text(text = "Urgentes", style = MaterialTheme.typography.labelMedium)
                 }
             }
@@ -83,13 +82,13 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
-        if (reportes.isEmpty()) {
+        if (uiState.reportes.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(stringResource(id = R.string.no_reports), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
-                items(reportes) { reporte ->
+                items(uiState.reportes) { reporte ->
                     ElevatedCard(
                         onClick = { onReporteClick(reporte.idReporte) },
                         modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth(),
@@ -105,7 +104,7 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
                                 Text(
                                     text = "Estado: ${reporte.estado.etiqueta}",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = if(reporte.estado.progreso == 1.0f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary
+                                    color = if (reporte.estado.progreso == 1.0f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary
                                 )
                             }
                             if (reporte.esUrgente) {

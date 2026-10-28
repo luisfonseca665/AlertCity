@@ -20,10 +20,10 @@ import com.example.alertcity.ui.viewmodel.HistoricoReportesViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoricoReportesScreen(viewModel: HistoricoReportesViewModel, onReporteClick: (String) -> Unit) {
-    val reportes by viewModel.listaReportes.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        
+
         // Cabecera
         Row(
             modifier = Modifier
@@ -54,16 +54,16 @@ fun HistoricoReportesScreen(viewModel: HistoricoReportesViewModel, onReporteClic
                 )
             }
         }
-        
+
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
-        if (reportes.isEmpty()) {
+        if (uiState.reportes.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("No hay reportes disponibles", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
-                items(reportes) { reporte ->
+                items(uiState.reportes) { reporte ->
                     ElevatedCard(
                         onClick = { onReporteClick(reporte.idReporte) },
                         modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth(),
@@ -79,7 +79,7 @@ fun HistoricoReportesScreen(viewModel: HistoricoReportesViewModel, onReporteClic
                                 Text(
                                     text = "Estado: ${reporte.estado.etiqueta}",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = if(reporte.estado.progreso == 1.0f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary
+                                    color = if (reporte.estado.progreso == 1.0f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary
                                 )
                             }
                             if (reporte.esUrgente) {
