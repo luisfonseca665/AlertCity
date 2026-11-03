@@ -9,7 +9,7 @@ import com.example.alertcity.data.remote.NetworkConstants
 import com.example.alertcity.data.remote.api.AlertCityApi
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
-import com.example.alertcity.ui.components.parsearCoordenadasUbicacion
+import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

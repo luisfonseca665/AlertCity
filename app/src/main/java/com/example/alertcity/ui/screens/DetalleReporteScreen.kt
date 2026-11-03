@@ -1,8 +1,15 @@
 package com.example.alertcity.ui.screens
 
-import android.annotation.SuppressLint
-import android.view.MotionEvent
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -11,34 +18,31 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
-import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.aplicarEstiloModerno
+import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
+import com.example.alertcity.ui.components.OsmMapCard
+import com.example.alertcity.ui.components.PinMapaUi
 import com.example.alertcity.ui.components.colorHexPorReporte
-import com.example.alertcity.ui.components.configurarOsmdroid
-import com.example.alertcity.ui.components.crearPinMapa
-import com.example.alertcity.ui.components.parsearCoordenadasUbicacion
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,103 +168,59 @@ fun DetalleReporteScreen(
     }
 }
 
-@SuppressLint("ClickableViewAccessibility")
 @Composable
 private fun MapaDetalleReporteCard(reporte: Reporte) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    val coordenadasParseadas = parsearCoordenadasUbicacion(reporte.ubicacion)
-    val latitud = coordenadasParseadas?.first ?: LATITUD_CIUDAD_DEFECTO
-    val longitud = coordenadasParseadas?.second ?: LONGITUD_CIUDAD_DEFECTO
-    val etiquetaUbicacion = reporte.ubicacion ?: "Ubicación aproximada"
-
-    val mapView = remember(reporte.idReporte) {
-        configurarOsmdroid(context)
-        MapView(context).apply {
-            aplicarEstiloModerno()
-            controller.setZoom(16.5)
-            controller.setCenter(GeoPoint(latitud, longitud))
-            setOnTouchListener { vista, evento ->
-                when (evento.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        vista.parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        vista.parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-                false
-            }
-        }
+    val coordenadasParseadas = remember(reporte.ubicacion) {
+        parsearCoordenadasUbicacion(reporte.ubicacion)
     }
 
-    DisposableEffect(lifecycleOwner, mapView) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                else -> Unit
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onDetach()
-        }
-    }
-
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp),
-        shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize(),
-                update = { mapa ->
-                    mapa.overlays.clear()
-                    val marker = Marker(mapa).apply {
-                        position = GeoPoint(latitud, longitud)
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        icon = crearPinMapa(context, colorHexPorReporte(reporte))
-                        title = reporte.titulo
-                        subDescription = "${reporte.categoria} • ${reporte.fechaHoraFormateada} • ${reporte.estado.etiqueta}"
-                    }
-                    mapa.overlays.add(marker)
-                    marker.showInfoWindow()
-                    mapa.invalidate()
-                }
-            )
-
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(8.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                tonalElevation = 4.dp
+    if (coordenadasParseadas == null) {
+        OutlinedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = etiquetaUbicacion,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = reporte.ubicacion?.takeIf { it.isNotBlank() }
+                        ?: "Sin ubicación exacta registrada",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
+        return
     }
+
+    val (latitud, longitud) = coordenadasParseadas
+    val pines = remember(reporte.idReporte, reporte.titulo, reporte.categoria, reporte.estado, reporte.esUrgente, latitud, longitud) {
+        listOf(
+            PinMapaUi(
+                id = reporte.idReporte,
+                latitud = latitud,
+                longitud = longitud,
+                colorHex = colorHexPorReporte(reporte),
+                titulo = reporte.titulo,
+                descripcion = "${reporte.categoria} • ${reporte.fechaHoraFormateada} • ${reporte.estado.etiqueta}",
+                mostrarInfoWindow = true
+            )
+        )
+    }
+
+    OsmMapCard(
+        latitudCamara = latitud,
+        longitudCamara = longitud,
+        pines = pines,
+        zoomInicial = 16.5,
+        zoomCamara = 16.5,
+        etiquetaInferior = reporte.ubicacion
+    )
 }

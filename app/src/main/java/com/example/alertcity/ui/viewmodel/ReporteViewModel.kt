@@ -18,8 +18,7 @@ data class ListaReportesUiState(
     val reportes: List<Reporte> = emptyList(),
     val totalReportes: Int = 0,
     val totalUrgentes: Int = 0,
-    val cargando: Boolean = false,
-    val mensajeError: String? = null
+    val cargando: Boolean = false
 )
 
 class ReporteViewModel(
@@ -49,14 +48,9 @@ class ReporteViewModel(
 
     fun refrescar() {
         viewModelScope.launch {
-            _uiState.update { it.copy(cargando = true, mensajeError = null) }
-            val resultado = repository.refreshReports()
-            _uiState.update { actual ->
-                actual.copy(
-                    cargando = false,
-                    mensajeError = resultado.exceptionOrNull()?.localizedMessage
-                )
-            }
+            _uiState.update { it.copy(cargando = true) }
+            repository.refreshReports()
+            _uiState.update { it.copy(cargando = false) }
         }
     }
 

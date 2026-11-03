@@ -9,11 +9,11 @@ import com.example.alertcity.AlertCityApp
 import com.example.alertcity.data.remote.NetworkConstants
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
-import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.formatearCoordenadas
 import java.util.Calendar
 import java.util.Locale
-import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,16 +58,7 @@ data class CrearReporteUiState(
 
     val ubicacion: String?
         get() = if (latitudSeleccionada != null && longitudSeleccionada != null) {
-            val ns = if (latitudSeleccionada >= 0.0) "N" else "S"
-            val ew = if (longitudSeleccionada >= 0.0) "E" else "W"
-            String.format(
-                Locale.US,
-                "%.4f° %s, %.4f° %s",
-                abs(latitudSeleccionada),
-                ns,
-                abs(longitudSeleccionada),
-                ew
-            )
+            formatearCoordenadas(latitudSeleccionada, longitudSeleccionada)
         } else {
             null
         }

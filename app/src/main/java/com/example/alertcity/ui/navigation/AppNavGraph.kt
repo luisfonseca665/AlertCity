@@ -5,7 +5,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -80,25 +84,8 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
                 HistoricoReportesScreen(
                     viewModel = historicoViewModel,
                     onReporteClick = { id ->
-                        navController.navigate("detalle_historico/$id")
+                        navController.navigate("detalle/$id")
                     }
-                )
-            }
-
-            composable(
-                route = "detalle_historico/{reporteId}",
-                arguments = listOf(navArgument("reporteId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val historicoViewModel: HistoricoReportesViewModel = viewModel(
-                    factory = HistoricoReportesViewModel.Factory
-                )
-                val uiState by historicoViewModel.uiState.collectAsState()
-                val reporteId = backStackEntry.arguments?.getString("reporteId")
-                val reporteSeleccionado = uiState.reportes.find { it.idReporte == reporteId }
-
-                DetalleReporteScreen(
-                    reporte = reporteSeleccionado,
-                    onBack = { navController.popBackStack() }
                 )
             }
         }
@@ -110,11 +97,13 @@ fun MenuNavegacionInferior(navController: NavHostController) {
     NavigationBar {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
+        val previousRoute = navController.previousBackStackEntry?.destination?.route
+        val enDetalle = currentRoute?.startsWith("detalle/") == true
 
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
             label = { Text("Inicio") },
-            selected = currentRoute == "inicio" || currentRoute?.startsWith("detalle/") == true,
+            selected = currentRoute == "inicio" || (enDetalle && previousRoute != "historico"),
             onClick = {
                 navController.navigate("inicio") {
                     popUpTo(navController.graph.startDestinationId)
@@ -136,7 +125,7 @@ fun MenuNavegacionInferior(navController: NavHostController) {
         NavigationBarItem(
             icon = { Icon(Icons.Default.History, contentDescription = "Histórico") },
             label = { Text("Histórico") },
-            selected = currentRoute == "historico" || currentRoute?.startsWith("detalle_historico") == true,
+            selected = currentRoute == "historico" || (enDetalle && previousRoute == "historico"),
             onClick = {
                 navController.navigate("historico") {
                     popUpTo(navController.graph.startDestinationId)

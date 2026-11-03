@@ -1,16 +1,21 @@
 package com.example.alertcity.ui.screens
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
-import android.view.MotionEvent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,9 +23,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,29 +50,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
-import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.aplicarEstiloModerno
+import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
+import com.example.alertcity.ui.components.OsmMapCard
+import com.example.alertcity.ui.components.PinMapaUi
 import com.example.alertcity.ui.components.colorHexPin
-import com.example.alertcity.ui.components.configurarOsmdroid
-import com.example.alertcity.ui.components.crearPinMapa
-import com.example.alertcity.ui.viewmodel.CrearReporteUiState
 import com.example.alertcity.ui.viewmodel.CrearReporteViewModel
 import java.io.File
-import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.MapEventsOverlay
-import org.osmdroid.views.overlay.Marker
 
-fun crearUriTemporal(context: Context): Uri {
+private fun crearUriTemporal(context: Context): Uri {
     val directorio = File(context.cacheDir, "images").apply { if (!exists()) mkdirs() }
     val archivo = File(directorio, "evidencia_${System.currentTimeMillis()}.jpg").apply { createNewFile() }
 
@@ -65,7 +72,7 @@ fun crearUriTemporal(context: Context): Uri {
     )
 }
 
-fun copiarAAlmacenamientoInterno(context: Context, uriOrigen: Uri): Uri {
+private fun copiarAAlmacenamientoInterno(context: Context, uriOrigen: Uri): Uri {
     return try {
         val directorio = File(context.filesDir, "reportes_fotos").apply { if (!exists()) mkdirs() }
         val archivoDestino = File(directorio, "foto_${System.currentTimeMillis()}.jpg")
@@ -81,7 +88,7 @@ fun copiarAAlmacenamientoInterno(context: Context, uriOrigen: Uri): Uri {
     }
 }
 
-fun obtenerCoordenadasDispositivo(context: Context): Pair<Double, Double> {
+private fun obtenerCoordenadasDispositivo(context: Context): Pair<Double, Double> {
     return try {
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         if (locationManager != null &&
@@ -200,7 +207,6 @@ fun CrearReportesScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Selección de hora (por defecto la actual)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -290,8 +296,14 @@ fun CrearReportesScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         MapaSeleccionUbicacionCard(
-            uiState = uiState,
-            onPuntoSeleccionado = { lat, lon -> viewModel.onMapaClick(lat, lon) }
+            latitudSeleccionada = uiState.latitudSeleccionada,
+            longitudSeleccionada = uiState.longitudSeleccionada,
+            urgente = uiState.urgente,
+            ubicacionTexto = uiState.ubicacion,
+            latitudCamara = uiState.latitudCamara,
+            longitudCamara = uiState.longitudCamara,
+            animarMapaTrigger = uiState.animarMapaTrigger,
+            onPuntoSeleccionado = viewModel::onMapaClick
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -366,135 +378,41 @@ fun CrearReportesScreen(
     }
 }
 
-@SuppressLint("ClickableViewAccessibility")
 @Composable
 private fun MapaSeleccionUbicacionCard(
-    uiState: CrearReporteUiState,
+    latitudSeleccionada: Double?,
+    longitudSeleccionada: Double?,
+    urgente: Boolean,
+    ubicacionTexto: String?,
+    latitudCamara: Double,
+    longitudCamara: Double,
+    animarMapaTrigger: Int,
     onPuntoSeleccionado: (Double, Double) -> Unit
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    val mapView = remember {
-        configurarOsmdroid(context)
-        MapView(context).apply {
-            aplicarEstiloModerno()
-            controller.setZoom(15.5)
-            controller.setCenter(GeoPoint(uiState.latitudCamara, uiState.longitudCamara))
-            setOnTouchListener { vista, evento ->
-                when (evento.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        vista.parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        vista.parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-                false
-            }
-        }
-    }
-
-    DisposableEffect(lifecycleOwner, mapView) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                else -> Unit
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onDetach()
-        }
-    }
-
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp),
-        shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize(),
-                update = { mapa ->
-                    mapa.overlays.clear()
-
-                    val receptorToques = object : MapEventsReceiver {
-                        override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                            if (p != null) {
-                                onPuntoSeleccionado(p.latitude, p.longitude)
-                            }
-                            return true
-                        }
-
-                        override fun longPressHelper(p: GeoPoint?): Boolean {
-                            if (p != null) {
-                                onPuntoSeleccionado(p.latitude, p.longitude)
-                            }
-                            return true
-                        }
-                    }
-                    mapa.overlays.add(MapEventsOverlay(receptorToques))
-
-                    val latPin = uiState.latitudSeleccionada
-                    val lonPin = uiState.longitudSeleccionada
-                    if (latPin != null && lonPin != null) {
-                        val colorPin = colorHexPin(esUrgente = uiState.urgente)
-                        val marker = Marker(mapa).apply {
-                            position = GeoPoint(latPin, lonPin)
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            icon = crearPinMapa(context, colorPin)
-                            title = uiState.titulo.ifBlank { "Ubicación del reporte" }
-                        }
-                        mapa.overlays.add(marker)
-                    }
-
-                    val claveCamara = "${uiState.latitudCamara},${uiState.longitudCamara},${uiState.animarMapaTrigger}"
-                    if (uiState.animarMapaTrigger > 0 && mapa.tag != claveCamara) {
-                        mapa.tag = claveCamara
-                        mapa.controller.animateTo(
-                            GeoPoint(uiState.latitudCamara, uiState.longitudCamara),
-                            16.5,
-                            500L
-                        )
-                    }
-
-                    mapa.invalidate()
-                }
+    val pines = remember(latitudSeleccionada, longitudSeleccionada, urgente) {
+        if (latitudSeleccionada != null && longitudSeleccionada != null) {
+            listOf(
+                PinMapaUi(
+                    id = "seleccion_actual",
+                    latitud = latitudSeleccionada,
+                    longitud = longitudSeleccionada,
+                    colorHex = colorHexPin(esUrgente = urgente),
+                    titulo = "Ubicación del reporte"
+                )
             )
-
-            if (uiState.ubicacion != null) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(8.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    tonalElevation = 4.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = uiState.ubicacion ?: "",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-            }
+        } else {
+            emptyList()
         }
     }
+
+    OsmMapCard(
+        latitudCamara = latitudCamara,
+        longitudCamara = longitudCamara,
+        pines = pines,
+        zoomInicial = 15.5,
+        zoomCamara = 16.5,
+        animarTrigger = animarMapaTrigger,
+        etiquetaInferior = ubicacionTexto,
+        onMapClick = onPuntoSeleccionado
+    )
 }
