@@ -1,7 +1,6 @@
 package com.example.alertcity.data.repository
 
 import com.example.alertcity.data.local.dao.ReporteDao
-import com.example.alertcity.data.local.entity.ReporteEntity
 import com.example.alertcity.data.local.entity.toDomain
 import com.example.alertcity.data.local.entity.toEntity
 import com.example.alertcity.domain.model.Reporte
@@ -9,13 +8,13 @@ import com.example.alertcity.domain.repository.ReporteRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class RoomReporteRepository (
+class RoomReporteRepository(
     private val dao: ReporteDao
-): ReporteRepository {
+) : ReporteRepository {
+
     override fun getAllReports(): Flow<List<Reporte>> {
-        return dao.getAllReports().map {
-            entititiesList ->
-            entititiesList.map { it.toDomain() }
+        return dao.getAllReports().map { entitiesList ->
+            entitiesList.map { it.toDomain() }
         }
     }
 

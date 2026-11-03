@@ -1,8 +1,6 @@
 package com.example.alertcity.ui.screens
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.graphics.drawable.Drawable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,10 +10,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,9 +34,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.example.alertcity.domain.model.EstadoReporte
-import com.example.alertcity.domain.model.Reporte
+import com.example.alertcity.ui.components.COLOR_PIN_ACTIVO
+import com.example.alertcity.ui.components.COLOR_PIN_RESUELTO
+import com.example.alertcity.ui.components.COLOR_PIN_URGENTE
 import com.example.alertcity.ui.components.aplicarEstiloModerno
+import com.example.alertcity.ui.components.colorHexPorReporte
 import com.example.alertcity.ui.components.configurarOsmdroid
 import com.example.alertcity.ui.components.crearPinMapa
 import com.example.alertcity.ui.viewmodel.HistoricoReportesUiState
@@ -44,15 +46,6 @@ import com.example.alertcity.ui.viewmodel.HistoricoReportesViewModel
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-
-private fun crearIconoPin(context: Context, reporte: Reporte): Drawable? {
-    val colorHex = when {
-        reporte.estado == EstadoReporte.RESUELTO -> "#2E7D32"
-        reporte.esUrgente -> "#D32F2F"
-        else -> "#1565C0"
-    }
-    return crearPinMapa(context, colorHex)
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,7 +90,7 @@ fun HistoricoReportesScreen(
             }
         }
 
-        // Leyenda de colores de pines
+        // Leyenda de colores de pines sincronizada con OsmMapHelper
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -105,9 +98,9 @@ fun HistoricoReportesScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LeyendaItem(color = Color(0xFFD32F2F), texto = "Urgente")
-            LeyendaItem(color = Color(0xFF1565C0), texto = "Activo")
-            LeyendaItem(color = Color(0xFF2E7D32), texto = "Resuelto")
+            LeyendaItem(color = Color(android.graphics.Color.parseColor(COLOR_PIN_URGENTE)), texto = "Urgente")
+            LeyendaItem(color = Color(android.graphics.Color.parseColor(COLOR_PIN_ACTIVO)), texto = "Activo")
+            LeyendaItem(color = Color(android.graphics.Color.parseColor(COLOR_PIN_RESUELTO)), texto = "Resuelto")
         }
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -191,11 +184,39 @@ fun HistoricoReportesScreen(
                                     }
                                 }
                                 Text(
-                                    text = "${reporte.categoria} • ${reporte.hora}",
+                                    text = reporte.categoria,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarToday,
+                                        contentDescription = "Fecha",
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = reporte.fechaFormateada,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Schedule,
+                                        contentDescription = "Hora",
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = reporte.hora,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(
                                     text = "Estado: ${reporte.estado.etiqueta}",
                                     style = MaterialTheme.typography.labelMedium,
@@ -301,9 +322,9 @@ private fun MapaIncidenciasCard(
                         val marker = Marker(mapa).apply {
                             position = GeoPoint(marcador.latitud, marcador.longitud)
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            icon = crearIconoPin(context, marcador.reporte)
+                            icon = crearPinMapa(context, colorHexPorReporte(marcador.reporte))
                             title = marcador.reporte.titulo
-                            subDescription = "${marcador.reporte.categoria} • ${marcador.reporte.estado.etiqueta}" +
+                            subDescription = "${marcador.reporte.categoria} • ${marcador.reporte.fechaHoraFormateada} • ${marcador.reporte.estado.etiqueta}" +
                                 if (!marcador.tieneUbicacionExacta) " (Ubicación aprox.)" else ""
                             setOnMarkerClickListener { m, _ ->
                                 m.showInfoWindow()
@@ -332,7 +353,7 @@ private fun MapaIncidenciasCard(
                 }
             )
 
-            // Boton flotante para recentrar el mapa
+            // Botón flotante para recentrar el mapa
             SmallFloatingActionButton(
                 onClick = onCentrarMapa,
                 modifier = Modifier
@@ -372,9 +393,11 @@ private fun MapaIncidenciasCard(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "${seleccionado.categoria} • ${seleccionado.estado.etiqueta}",
+                                text = "${seleccionado.categoria} • ${seleccionado.fechaHoraFormateada}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         TextButton(onClick = { onVerDetalle(seleccionado.idReporte) }) {

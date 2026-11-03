@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -41,7 +43,7 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
-                    text = "${stringResource(id = R.string.greeting)}",
+                    text = stringResource(id = R.string.greeting),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -68,7 +70,7 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
                     Text(text = "${uiState.totalReportes}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                     Text(text = "Reportes", style = MaterialTheme.typography.labelMedium)
                 }
-                Divider(modifier = Modifier.height(40.dp).width(1.dp))
+                VerticalDivider(modifier = Modifier.height(40.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = "${uiState.totalUrgentes}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.error)
                     Text(text = "Urgentes", style = MaterialTheme.typography.labelMedium)
@@ -88,18 +90,50 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
             }
         } else {
             LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
-                items(uiState.reportes) { reporte ->
+                items(uiState.reportes, key = { it.idReporte }) { reporte ->
                     ElevatedCard(
                         onClick = { onReporteClick(reporte.idReporte) },
                         modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth(),
                         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                     ) {
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Assignment, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.AutoMirrored.Filled.Assignment, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(reporte.titulo, style = MaterialTheme.typography.titleMedium)
-                                Text("${reporte.categoria} • ${reporte.hora}", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    text = reporte.categoria,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarToday,
+                                        contentDescription = "Fecha",
+                                        modifier = Modifier.size(13.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = reporte.fechaFormateada,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Schedule,
+                                        contentDescription = "Hora",
+                                        modifier = Modifier.size(13.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = reporte.hora,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "Estado: ${reporte.estado.etiqueta}",
@@ -108,7 +142,7 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
                                 )
                             }
                             if (reporte.esUrgente) {
-                                Text("URGENTE", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                                Text("URGENTE", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

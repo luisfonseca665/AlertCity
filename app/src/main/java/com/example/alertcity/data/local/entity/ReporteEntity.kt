@@ -2,39 +2,24 @@ package com.example.alertcity.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
 
-@Entity(
-    tableName = "reportes"
-
-/* VAMOS A QUITAR ESTO POR EL MOMENTO PORQUE SOLO TENEMOS UN USUARIO
-,
-    foreignKeys = [
-        ForeignKey(
-            entity = UsuarioEntity::class,
-            parentColumns = ["idUsuario"],
-            childColumns = ["idUsuario"],
-            onDelete = ForeignKey.NO_ACTION
-        )
-    ],
-    indices = [Index(value = ["idUsuario"])]*/
-)
-data class ReporteEntity (
+@Entity(tableName = "reportes")
+data class ReporteEntity(
     @PrimaryKey
-    @ColumnInfo("idReporte") val idReporte: String,
-    @ColumnInfo("idUsuario") val idUsuario: String,
-    @ColumnInfo("titulo") val titulo: String,
-    @ColumnInfo("descripcion") val descripcion: String,
-    @ColumnInfo("categoria") val categoria: String,
-    @ColumnInfo("esUrgente") val esUrgente: Boolean,
-    @ColumnInfo("hora") val hora: String,
-    @ColumnInfo("fotoUri") val fotoUri: String?,
-    @ColumnInfo("ubicacion") val ubicacion: String?,
-    @ColumnInfo("estado") val estado: EstadoReporte,
+    @ColumnInfo(name = "idReporte") val idReporte: String,
+    @ColumnInfo(name = "idUsuario") val idUsuario: String,
+    @ColumnInfo(name = "titulo") val titulo: String,
+    @ColumnInfo(name = "descripcion") val descripcion: String,
+    @ColumnInfo(name = "categoria") val categoria: String,
+    @ColumnInfo(name = "esUrgente") val esUrgente: Boolean,
+    @ColumnInfo(name = "hora") val hora: String,
+    @ColumnInfo(name = "fechaCreacion", defaultValue = "0") val fechaCreacion: Long = 0L,
+    @ColumnInfo(name = "fotoUri") val fotoUri: String?,
+    @ColumnInfo(name = "ubicacion") val ubicacion: String?,
+    @ColumnInfo(name = "estado") val estado: EstadoReporte
 )
 
 fun ReporteEntity.toDomain(): Reporte = Reporte(
@@ -45,6 +30,7 @@ fun ReporteEntity.toDomain(): Reporte = Reporte(
     categoria = categoria,
     esUrgente = esUrgente,
     hora = hora,
+    fechaCreacion = fechaCreacion,
     fotoUri = fotoUri,
     ubicacion = ubicacion,
     estado = estado
@@ -58,6 +44,7 @@ fun Reporte.toEntity(): ReporteEntity = ReporteEntity(
     categoria = categoria,
     esUrgente = esUrgente,
     hora = hora,
+    fechaCreacion = fechaCreacion,
     fotoUri = fotoUri,
     ubicacion = ubicacion,
     estado = estado

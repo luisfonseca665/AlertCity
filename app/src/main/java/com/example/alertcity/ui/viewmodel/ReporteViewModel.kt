@@ -41,10 +41,6 @@ class ReporteViewModel(
         }
     }
 
-    fun obtenerReportePorId(id: String): Reporte? {
-        return _uiState.value.reportes.find { it.idReporte == id }
-    }
-
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

@@ -16,7 +16,7 @@ data class UsuarioEntity(
     @ColumnInfo(name = "direccion") val direccion: String
 )
 
-fun Usuario.toDomain(): Usuario = Usuario(
+fun UsuarioEntity.toDomain(): Usuario = Usuario(
     idUsuario = idUsuario,
     usuario = usuario,
     contrasena = contrasena,
@@ -25,7 +25,7 @@ fun Usuario.toDomain(): Usuario = Usuario(
     direccion = direccion
 )
 
-fun UsuarioEntity.toEntity(): UsuarioEntity = UsuarioEntity(
+fun Usuario.toEntity(): UsuarioEntity = UsuarioEntity(
     idUsuario = idUsuario,
     usuario = usuario,
     contrasena = contrasena,

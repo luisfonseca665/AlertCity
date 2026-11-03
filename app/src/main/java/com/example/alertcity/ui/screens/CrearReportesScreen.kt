@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -38,7 +39,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
+import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
+import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
 import com.example.alertcity.ui.components.aplicarEstiloModerno
+import com.example.alertcity.ui.components.colorHexPin
 import com.example.alertcity.ui.components.configurarOsmdroid
 import com.example.alertcity.ui.components.crearPinMapa
 import com.example.alertcity.ui.viewmodel.CrearReporteUiState
@@ -88,14 +92,14 @@ fun obtenerCoordenadasDispositivo(context: Context): Pair<Double, Double> {
             if (location != null) {
                 location.latitude to location.longitude
             } else {
-                20.1387 to -101.1895
+                LATITUD_CIUDAD_DEFECTO to LONGITUD_CIUDAD_DEFECTO
             }
         } else {
-            20.1387 to -101.1895
+            LATITUD_CIUDAD_DEFECTO to LONGITUD_CIUDAD_DEFECTO
         }
     } catch (e: Exception) {
         e.printStackTrace()
-        20.1387 to -101.1895
+        LATITUD_CIUDAD_DEFECTO to LONGITUD_CIUDAD_DEFECTO
     }
 }
 
@@ -107,6 +111,10 @@ fun CrearReportesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.sincronizarHoraActualSiNoEsPersonalizada()
+    }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
@@ -244,7 +252,7 @@ fun CrearReportesScreen(
             }
         }
 
-        // Previsualizacion de foto si existe
+        // Previsualización de foto si existe
         uiState.fotoUri?.let { fotoActual ->
             Spacer(modifier = Modifier.height(12.dp))
             Text(
@@ -266,7 +274,7 @@ fun CrearReportesScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Mapa interactivo para seleccionar o confirmar ubicacion
+        // Mapa interactivo para seleccionar o confirmar ubicación
         Text(
             text = "Ubicación del incidente",
             style = MaterialTheme.typography.labelLarge,
@@ -293,7 +301,10 @@ fun CrearReportesScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = uiState.formularioValido
         ) {
-            Text("Guardar Reporte", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = if (uiState.guardando) "Guardando..." else "Guardar Reporte",
+                style = MaterialTheme.typography.titleMedium
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -433,7 +444,7 @@ private fun MapaSeleccionUbicacionCard(
                     val latPin = uiState.latitudSeleccionada
                     val lonPin = uiState.longitudSeleccionada
                     if (latPin != null && lonPin != null) {
-                        val colorPin = if (uiState.urgente) "#D32F2F" else "#1565C0"
+                        val colorPin = colorHexPin(esUrgente = uiState.urgente)
                         val marker = Marker(mapa).apply {
                             position = GeoPoint(latPin, lonPin)
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)

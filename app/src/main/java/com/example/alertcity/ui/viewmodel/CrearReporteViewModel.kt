@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.alertcity.AlertCityApp
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
+import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
+import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
@@ -16,9 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-private const val LATITUD_INICIAL = 20.1387
-private const val LONGITUD_INICIAL = -101.1895
 
 private val CATEGORIAS_REPORTE = listOf(
     "Baches y Vialidad",
@@ -41,14 +40,15 @@ data class CrearReporteUiState(
     val urgente: Boolean = false,
     val hora: Int = Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
     val minuto: Int = Calendar.getInstance().get(Calendar.MINUTE),
+    val horaPersonalizada: Boolean = false,
     val mostrarTimePicker: Boolean = false,
     val fotoUri: String? = null,
     val tempUri: String? = null,
     val mostrarOpcionesFoto: Boolean = false,
     val latitudSeleccionada: Double? = null,
     val longitudSeleccionada: Double? = null,
-    val latitudCamara: Double = LATITUD_INICIAL,
-    val longitudCamara: Double = LONGITUD_INICIAL,
+    val latitudCamara: Double = LATITUD_CIUDAD_DEFECTO,
+    val longitudCamara: Double = LONGITUD_CIUDAD_DEFECTO,
     val animarMapaTrigger: Int = 0,
     val guardando: Boolean = false
 ) {
@@ -81,6 +81,20 @@ class CrearReporteViewModel(
 
     private val _uiState = MutableStateFlow(CrearReporteUiState())
     val uiState: StateFlow<CrearReporteUiState> = _uiState.asStateFlow()
+
+    fun sincronizarHoraActualSiNoEsPersonalizada() {
+        val ahora = Calendar.getInstance()
+        _uiState.update { actual ->
+            if (actual.horaPersonalizada) {
+                actual
+            } else {
+                actual.copy(
+                    hora = ahora.get(Calendar.HOUR_OF_DAY),
+                    minuto = ahora.get(Calendar.MINUTE)
+                )
+            }
+        }
+    }
 
     fun onTituloChange(nuevoTitulo: String) {
         _uiState.update { it.copy(titulo = nuevoTitulo) }
@@ -116,6 +130,7 @@ class CrearReporteViewModel(
             it.copy(
                 hora = hora,
                 minuto = minuto,
+                horaPersonalizada = true,
                 mostrarTimePicker = false
             )
         }
@@ -161,12 +176,25 @@ class CrearReporteViewModel(
         _uiState.update { it.copy(guardando = true) }
 
         viewModelScope.launch {
+            val ahora = Calendar.getInstance()
+            val horaFinal = if (estadoActual.horaPersonalizada) {
+                estadoActual.horaFormateada
+            } else {
+                String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    ahora.get(Calendar.HOUR_OF_DAY),
+                    ahora.get(Calendar.MINUTE)
+                )
+            }
+
             val nuevo = Reporte(
                 titulo = estadoActual.titulo,
                 descripcion = estadoActual.descripcion,
                 categoria = estadoActual.categoria,
                 esUrgente = estadoActual.urgente,
-                hora = estadoActual.horaFormateada,
+                hora = horaFinal,
+                fechaCreacion = ahora.timeInMillis,
                 fotoUri = estadoActual.fotoUri,
                 ubicacion = estadoActual.ubicacion
             )

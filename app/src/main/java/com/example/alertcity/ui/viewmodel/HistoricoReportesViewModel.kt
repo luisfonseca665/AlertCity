@@ -19,9 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-private const val LATITUD_POR_DEFECTO = LATITUD_CIUDAD_DEFECTO
-private const val LONGITUD_POR_DEFECTO = LONGITUD_CIUDAD_DEFECTO
-
 data class MarcadorReporte(
     val reporte: Reporte,
     val latitud: Double,
@@ -33,8 +30,8 @@ data class HistoricoReportesUiState(
     val reportes: List<Reporte> = emptyList(),
     val marcadores: List<MarcadorReporte> = emptyList(),
     val reporteSeleccionado: Reporte? = null,
-    val latitudCentro: Double = LATITUD_POR_DEFECTO,
-    val longitudCentro: Double = LONGITUD_POR_DEFECTO,
+    val latitudCentro: Double = LATITUD_CIUDAD_DEFECTO,
+    val longitudCentro: Double = LONGITUD_CIUDAD_DEFECTO,
     val zoomMapa: Double = 15.0,
     val enfocarTrigger: Int = 0
 )
@@ -60,8 +57,8 @@ class HistoricoReportesViewModel(
                         reportes = lista,
                         marcadores = marcadoresCalculados,
                         reporteSeleccionado = seleccionadoActualizado,
-                        latitudCentro = if (mantenerCentro) actual.latitudCentro else (primerMarcador?.latitud ?: LATITUD_POR_DEFECTO),
-                        longitudCentro = if (mantenerCentro) actual.longitudCentro else (primerMarcador?.longitud ?: LONGITUD_POR_DEFECTO),
+                        latitudCentro = if (mantenerCentro) actual.latitudCentro else (primerMarcador?.latitud ?: LATITUD_CIUDAD_DEFECTO),
+                        longitudCentro = if (mantenerCentro) actual.longitudCentro else (primerMarcador?.longitud ?: LONGITUD_CIUDAD_DEFECTO),
                         enfocarTrigger = if (!mantenerCentro && primerMarcador != null) actual.enfocarTrigger + 1 else actual.enfocarTrigger
                     )
                 }
@@ -91,16 +88,12 @@ class HistoricoReportesViewModel(
         _uiState.update {
             it.copy(
                 reporteSeleccionado = null,
-                latitudCentro = primerMarcador?.latitud ?: LATITUD_POR_DEFECTO,
-                longitudCentro = primerMarcador?.longitud ?: LONGITUD_POR_DEFECTO,
+                latitudCentro = primerMarcador?.latitud ?: LATITUD_CIUDAD_DEFECTO,
+                longitudCentro = primerMarcador?.longitud ?: LONGITUD_CIUDAD_DEFECTO,
                 zoomMapa = 15.0,
                 enfocarTrigger = it.enfocarTrigger + 1
             )
         }
-    }
-
-    fun obtenerReportePorId(id: String): Reporte? {
-        return _uiState.value.reportes.find { it.idReporte == id }
     }
 
     private fun construirMarcadores(reportes: List<Reporte>): List<MarcadorReporte> {
@@ -108,14 +101,14 @@ class HistoricoReportesViewModel(
 
         return reportes.map { reporte ->
             val parseada = parsearCoordenadasUbicacion(reporte.ubicacion)
-            val latBase = parseada?.first ?: LATITUD_POR_DEFECTO
-            val lonBase = parseada?.second ?: LONGITUD_POR_DEFECTO
+            val latBase = parseada?.first ?: LATITUD_CIUDAD_DEFECTO
+            val lonBase = parseada?.second ?: LONGITUD_CIUDAD_DEFECTO
             val clave = "${"%.4f".format(latBase)},${"%.4f".format(lonBase)}"
 
             val indiceRepetido = conteoPorCoordenada.getOrDefault(clave, 0)
             conteoPorCoordenada[clave] = indiceRepetido + 1
 
-            // Si varios reportes comparten la misma coordenada, se separan ligeramente en circulo para ver todos los pines
+            // Si varios reportes comparten la misma coordenada, se separan ligeramente en círculo para ver todos los pines
             val desplazamiento = if (indiceRepetido == 0) {
                 0.0 to 0.0
             } else {
