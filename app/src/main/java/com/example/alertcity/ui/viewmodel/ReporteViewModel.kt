@@ -17,7 +17,9 @@ import kotlinx.coroutines.launch
 data class ListaReportesUiState(
     val reportes: List<Reporte> = emptyList(),
     val totalReportes: Int = 0,
-    val totalUrgentes: Int = 0
+    val totalUrgentes: Int = 0,
+    val cargando: Boolean = false,
+    val mensajeError: String? = null
 )
 
 class ReporteViewModel(
@@ -28,6 +30,7 @@ class ReporteViewModel(
     val uiState: StateFlow<ListaReportesUiState> = _uiState.asStateFlow()
 
     init {
+        // Observación reactiva constante de Room
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 _uiState.update {
@@ -37,6 +40,22 @@ class ReporteViewModel(
                         totalUrgentes = lista.count { reporte -> reporte.esUrgente }
                     )
                 }
+            }
+        }
+
+        // Descarga inicial de reportes del Backend local
+        refrescar()
+    }
+
+    fun refrescar() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(cargando = true, mensajeError = null) }
+            val resultado = repository.refreshReports()
+            _uiState.update { actual ->
+                actual.copy(
+                    cargando = false,
+                    mensajeError = resultado.exceptionOrNull()?.localizedMessage
+                )
             }
         }
     }

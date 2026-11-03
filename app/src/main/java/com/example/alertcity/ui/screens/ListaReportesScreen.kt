@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -27,10 +28,14 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
     val uiState by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        if (uiState.cargando) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -41,7 +46,7 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
             )
 
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(id = R.string.greeting),
                     style = MaterialTheme.typography.titleLarge,
@@ -53,6 +58,14 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
                     text = stringResource(id = R.string.location),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(onClick = { viewModel.refrescar() }) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Sincronizar con Backend",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -86,7 +99,11 @@ fun ListaReportesScreen(viewModel: ReporteViewModel, onReporteClick: (String) ->
 
         if (uiState.reportes.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(id = R.string.no_reports), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (uiState.cargando) {
+                    CircularProgressIndicator()
+                } else {
+                    Text(stringResource(id = R.string.no_reports), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         } else {
             LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {

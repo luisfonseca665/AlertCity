@@ -45,6 +45,9 @@ class HistoricoReportesViewModel(
 
     init {
         viewModelScope.launch {
+            repository.refreshReports()
+        }
+        viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 val marcadoresCalculados = construirMarcadores(lista)
                 _uiState.update { actual ->

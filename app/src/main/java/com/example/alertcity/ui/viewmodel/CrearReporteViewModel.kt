@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.alertcity.AlertCityApp
+import com.example.alertcity.data.remote.NetworkConstants
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
 import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
@@ -189,6 +190,7 @@ class CrearReporteViewModel(
             }
 
             val nuevo = Reporte(
+                idUsuario = NetworkConstants.DEMO_USER_ID,
                 titulo = estadoActual.titulo,
                 descripcion = estadoActual.descripcion,
                 categoria = estadoActual.categoria,
@@ -198,7 +200,11 @@ class CrearReporteViewModel(
                 fotoUri = estadoActual.fotoUri,
                 ubicacion = estadoActual.ubicacion
             )
-            repository.saveReport(nuevo)
+            repository.saveReport(
+                report = nuevo,
+                latitud = estadoActual.latitudSeleccionada,
+                longitud = estadoActual.longitudSeleccionada
+            )
             _uiState.value = CrearReporteUiState()
             onReporteGuardado()
         }

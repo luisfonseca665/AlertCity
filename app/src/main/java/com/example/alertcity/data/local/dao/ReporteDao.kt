@@ -14,4 +14,7 @@ interface ReporteDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addReport(reporte: ReporteEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(reportes: List<ReporteEntity>)
 }

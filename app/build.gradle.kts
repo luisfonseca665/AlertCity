@@ -64,5 +64,12 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     // Mapa interactivo OpenStreetMap (sin necesidad de API Key)
+    // Retrofit & OkHttp
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.google.gson)
+
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 }

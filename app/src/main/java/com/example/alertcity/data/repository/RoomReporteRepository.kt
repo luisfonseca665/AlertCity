@@ -18,7 +18,20 @@ class RoomReporteRepository(
         }
     }
 
-    override suspend fun saveReport(report: Reporte) {
-        dao.addReport(report.toEntity())
+    override suspend fun saveReport(
+        report: Reporte,
+        latitud: Double?,
+        longitud: Double?
+    ): Result<Reporte> {
+        return try {
+            dao.addReport(report.toEntity())
+            Result.success(report)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun refreshReports(): Result<Unit> {
+        return Result.success(Unit)
     }
 }
