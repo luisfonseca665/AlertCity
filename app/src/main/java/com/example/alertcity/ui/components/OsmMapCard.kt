@@ -19,6 +19,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +36,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.alertcity.domain.model.Reporte
+import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -68,7 +71,7 @@ fun OsmMapCard(
     zoomInicial: Double = 15.5,
     zoomCamara: Double = zoomInicial,
     animarTrigger: Int = 0,
-    alto: Dp = 220.dp,
+    alto: Dp? = 220.dp,
     radioEsquina: Dp = 14.dp,
     elevacion: Dp = 3.dp,
     etiquetaInferior: String? = null,
@@ -120,7 +123,7 @@ fun OsmMapCard(
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
-            .height(alto),
+            .let { base -> if (alto != null) base.height(alto) else base },
         shape = RoundedCornerShape(radioEsquina),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = elevacion)
     ) {
@@ -233,4 +236,61 @@ fun OsmMapCard(
             contenidoSuperpuesto()
         }
     }
+}
+
+@Composable
+fun ReporteUbicacionDetalleCard(reporte: Reporte) {
+    val coordenadasParseadas = remember(reporte.ubicacion) {
+        parsearCoordenadasUbicacion(reporte.ubicacion)
+    }
+
+    if (coordenadasParseadas == null) {
+        OutlinedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = reporte.ubicacion?.takeIf { it.isNotBlank() }
+                        ?: "Sin ubicación exacta registrada",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+
+    val (latitud, longitud) = coordenadasParseadas
+    val pines = remember(reporte.idReporte, reporte.titulo, reporte.categoria, reporte.estado, reporte.esUrgente, latitud, longitud) {
+        listOf(
+            PinMapaUi(
+                id = reporte.idReporte,
+                latitud = latitud,
+                longitud = longitud,
+                colorHex = colorHexPorReporte(reporte),
+                titulo = reporte.titulo,
+                descripcion = "${reporte.categoria} • ${reporte.fechaHoraFormateada} • ${reporte.estado.etiqueta}",
+                mostrarInfoWindow = true
+            )
+        )
+    }
+
+    OsmMapCard(
+        latitudCamara = latitud,
+        longitudCamara = longitud,
+        pines = pines,
+        zoomInicial = 16.5,
+        zoomCamara = 16.5,
+        etiquetaInferior = reporte.ubicacion
+    )
 }

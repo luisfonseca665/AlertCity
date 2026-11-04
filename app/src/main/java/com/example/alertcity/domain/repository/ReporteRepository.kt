@@ -12,5 +12,9 @@ interface ReporteRepository {
         longitud: Double? = null
     ): Result<Reporte>
 
+    suspend fun updateReport(report: Reporte): Result<Unit>
+
+    suspend fun deleteReport(idReporte: String): Result<Unit>
+
     suspend fun refreshReports(): Result<Unit>
 }

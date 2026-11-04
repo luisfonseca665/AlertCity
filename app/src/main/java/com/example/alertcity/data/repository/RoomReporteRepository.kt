@@ -31,6 +31,24 @@ class RoomReporteRepository(
         }
     }
 
+    override suspend fun updateReport(report: Reporte): Result<Unit> {
+        return try {
+            dao.updateReport(report.toEntity())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteReport(idReporte: String): Result<Unit> {
+        return try {
+            dao.deleteReportById(idReporte)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun refreshReports(): Result<Unit> {
         return Result.success(Unit)
     }

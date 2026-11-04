@@ -95,4 +95,24 @@ class NetworkBoundReporteRepository(
             Result.failure(e)
         }
     }
+
+    override suspend fun updateReport(report: Reporte): Result<Unit> {
+        return try {
+            dao.updateReport(report.toEntity())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al actualizar reporte localmente en Room", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteReport(idReporte: String): Result<Unit> {
+        return try {
+            dao.deleteReportById(idReporte)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al eliminar reporte localmente en Room", e)
+            Result.failure(e)
+        }
+    }
 }

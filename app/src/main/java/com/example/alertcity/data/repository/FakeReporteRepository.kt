@@ -29,6 +29,20 @@ class FakeReporteRepository : ReporteRepository {
         return Result.success(report)
     }
 
+    override suspend fun updateReport(report: Reporte): Result<Unit> {
+        reportesEnMemoria.update { lista ->
+            lista.map { if (it.idReporte == report.idReporte) report else it }
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun deleteReport(idReporte: String): Result<Unit> {
+        reportesEnMemoria.update { lista ->
+            lista.filterNot { it.idReporte == idReporte }
+        }
+        return Result.success(Unit)
+    }
+
     override suspend fun refreshReports(): Result<Unit> {
         return Result.success(Unit)
     }

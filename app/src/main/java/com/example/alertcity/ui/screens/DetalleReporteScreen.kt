@@ -16,20 +16,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,10 +36,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
-import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
-import com.example.alertcity.ui.components.OsmMapCard
-import com.example.alertcity.ui.components.PinMapaUi
-import com.example.alertcity.ui.components.colorHexPorReporte
+import com.example.alertcity.ui.components.ReporteUbicacionDetalleCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,66 +155,9 @@ fun DetalleReporteScreen(
             Spacer(modifier = Modifier.height(18.dp))
             Text(text = "Ubicación", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
-            MapaDetalleReporteCard(reporte = reporte)
+            ReporteUbicacionDetalleCard(reporte = reporte)
 
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
-}
-
-@Composable
-private fun MapaDetalleReporteCard(reporte: Reporte) {
-    val coordenadasParseadas = remember(reporte.ubicacion) {
-        parsearCoordenadasUbicacion(reporte.ubicacion)
-    }
-
-    if (coordenadasParseadas == null) {
-        OutlinedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = reporte.ubicacion?.takeIf { it.isNotBlank() }
-                        ?: "Sin ubicación exacta registrada",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        return
-    }
-
-    val (latitud, longitud) = coordenadasParseadas
-    val pines = remember(reporte.idReporte, reporte.titulo, reporte.categoria, reporte.estado, reporte.esUrgente, latitud, longitud) {
-        listOf(
-            PinMapaUi(
-                id = reporte.idReporte,
-                latitud = latitud,
-                longitud = longitud,
-                colorHex = colorHexPorReporte(reporte),
-                titulo = reporte.titulo,
-                descripcion = "${reporte.categoria} • ${reporte.fechaHoraFormateada} • ${reporte.estado.etiqueta}",
-                mostrarInfoWindow = true
-            )
-        )
-    }
-
-    OsmMapCard(
-        latitudCamara = latitud,
-        longitudCamara = longitud,
-        pines = pines,
-        zoomInicial = 16.5,
-        zoomCamara = 16.5,
-        etiquetaInferior = reporte.ubicacion
-    )
 }
