@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,9 +34,24 @@ import com.example.alertcity.ui.viewmodel.ReporteViewModel
 @Composable
 fun AppNavGraph(viewModel: ReporteViewModel) {
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
-        bottomBar = { MenuNavegacionInferior(navController) }
+        bottomBar = { MenuNavegacionInferior(navController) },
+        floatingActionButton = {
+            if (currentRoute == "inicio") {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        navController.navigate("crear") {
+                            launchSingleTop = true
+                        }
+                    },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Nuevo reporte") },
+                    text = { Text("Reportar") }
+                )
+            }
+        }
     ) { padding ->
         NavHost(
             navController = navController,
@@ -57,6 +73,7 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
                 )
                 CrearReportesScreen(
                     viewModel = crearReporteViewModel,
+                    onBack = { navController.popBackStack() },
                     onReporteGuardado = {
                         navController.navigate("inicio") { popUpTo(0) }
                     }
@@ -106,17 +123,6 @@ fun MenuNavegacionInferior(navController: NavHostController) {
             selected = currentRoute == "inicio" || (enDetalle && previousRoute != "historico"),
             onClick = {
                 navController.navigate("inicio") {
-                    popUpTo(navController.graph.startDestinationId)
-                    launchSingleTop = true
-                }
-            }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Add, contentDescription = "Reportar") },
-            label = { Text("Reportar") },
-            selected = currentRoute == "crear",
-            onClick = {
-                navController.navigate("crear") {
                     popUpTo(navController.graph.startDestinationId)
                     launchSingleTop = true
                 }

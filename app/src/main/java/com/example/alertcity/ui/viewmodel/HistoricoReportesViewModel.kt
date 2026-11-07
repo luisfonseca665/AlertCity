@@ -13,6 +13,7 @@ import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
 import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +34,8 @@ data class HistoricoReportesUiState(
     val latitudCentro: Double = LATITUD_CIUDAD_DEFECTO,
     val longitudCentro: Double = LONGITUD_CIUDAD_DEFECTO,
     val zoomMapa: Double = 15.0,
-    val enfocarTrigger: Int = 0
+    val enfocarTrigger: Int = 0,
+    val cargando: Boolean = false
 )
 
 class HistoricoReportesViewModel(
@@ -44,9 +46,7 @@ class HistoricoReportesViewModel(
     val uiState: StateFlow<HistoricoReportesUiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            repository.refreshReports()
-        }
+        refrescar()
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 val marcadoresCalculados = construirMarcadores(lista)
@@ -66,6 +66,20 @@ class HistoricoReportesViewModel(
                     )
                 }
             }
+        }
+    }
+
+    fun refrescar() {
+        if (_uiState.value.cargando) return
+        viewModelScope.launch {
+            val inicio = System.currentTimeMillis()
+            _uiState.update { it.copy(cargando = true) }
+            repository.refreshReports()
+            val transcurrido = System.currentTimeMillis() - inicio
+            if (transcurrido < 350L) {
+                delay(350L - transcurrido)
+            }
+            _uiState.update { it.copy(cargando = false) }
         }
     }
 
@@ -111,7 +125,6 @@ class HistoricoReportesViewModel(
             val indiceRepetido = conteoPorCoordenada.getOrDefault(clave, 0)
             conteoPorCoordenada[clave] = indiceRepetido + 1
 
-            // Si varios reportes comparten la misma coordenada, se separan ligeramente en círculo para ver todos los pines
             val desplazamiento = if (indiceRepetido == 0) {
                 0.0 to 0.0
             } else {

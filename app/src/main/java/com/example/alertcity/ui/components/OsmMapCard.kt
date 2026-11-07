@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -69,9 +71,12 @@ fun OsmMapCard(
     zoomCamara: Double = zoomInicial,
     animarTrigger: Int = 0,
     alto: Dp = 220.dp,
-    radioEsquina: Dp = 14.dp,
+    ocuparTodoElAlto: Boolean = false,
+    radioEsquina: Dp = 16.dp,
     elevacion: Dp = 3.dp,
     etiquetaInferior: String? = null,
+    onAmpliarClick: (() -> Unit)? = null,
+    alineacionBotonAmpliar: Alignment = Alignment.TopEnd,
     onMapClick: ((Double, Double) -> Unit)? = null,
     onPinClick: ((String) -> Unit)? = null,
     contenidoSuperpuesto: @Composable BoxScope.() -> Unit = {}
@@ -117,10 +122,16 @@ fun OsmMapCard(
         }
     }
 
-    ElevatedCard(
-        modifier = modifier
+    val cardModifier = if (ocuparTodoElAlto) {
+        modifier.fillMaxSize()
+    } else {
+        modifier
             .fillMaxWidth()
-            .height(alto),
+            .height(alto)
+    }
+
+    ElevatedCard(
+        modifier = cardModifier,
         shape = RoundedCornerShape(radioEsquina),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = elevacion)
     ) {
@@ -202,24 +213,48 @@ fun OsmMapCard(
                 }
             )
 
+            if (onAmpliarClick != null) {
+                Surface(
+                    onClick = onAmpliarClick,
+                    modifier = Modifier
+                        .align(alineacionBotonAmpliar)
+                        .padding(10.dp)
+                        .size(36.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    tonalElevation = 4.dp,
+                    shadowElevation = 3.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.OpenInFull,
+                            contentDescription = "Previsualizar mapa",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
             if (etiquetaInferior != null) {
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(8.dp),
-                    shape = RoundedCornerShape(8.dp),
+                        .padding(10.dp),
+                    shape = RoundedCornerShape(50),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    tonalElevation = 4.dp
+                    tonalElevation = 4.dp,
+                    shadowElevation = 2.dp
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
