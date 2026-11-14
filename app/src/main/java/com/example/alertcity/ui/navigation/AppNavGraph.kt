@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
@@ -32,13 +31,11 @@ import androidx.navigation.navArgument
 import com.example.alertcity.ui.screens.AdminDashboardScreen
 import com.example.alertcity.ui.screens.AdminDetalleReporteScreen
 import com.example.alertcity.ui.screens.AdminMapaScreen
-import com.example.alertcity.ui.screens.AdminUsuariosScreen
 import com.example.alertcity.ui.screens.CrearReportesScreen
 import com.example.alertcity.ui.screens.DetalleReporteScreen
 import com.example.alertcity.ui.screens.HistoricoReportesScreen
 import com.example.alertcity.ui.screens.ListaReportesScreen
 import com.example.alertcity.ui.viewmodel.AdminReportesViewModel
-import com.example.alertcity.ui.viewmodel.AdminUsuariosViewModel
 import com.example.alertcity.ui.viewmodel.CrearReporteViewModel
 import com.example.alertcity.ui.viewmodel.HistoricoReportesViewModel
 import com.example.alertcity.ui.viewmodel.ReporteViewModel
@@ -178,16 +175,6 @@ private fun FlujoNavegacionAdmin(
                 )
             }
 
-            composable("admin_usuarios") {
-                val adminUsuariosViewModel: AdminUsuariosViewModel = viewModel(
-                    factory = AdminUsuariosViewModel.Factory
-                )
-                AdminUsuariosScreen(
-                    viewModel = adminUsuariosViewModel,
-                    onCambiarModoCiudadano = onSalirModoAdmin
-                )
-            }
-
             composable(
                 route = "admin_detalle/{reporteId}",
                 arguments = listOf(navArgument("reporteId") { type = NavType.StringType })
@@ -280,17 +267,6 @@ fun MenuNavegacionInferiorAdmin(navController: NavHostController) {
             selected = currentRoute == "admin_mapa" || (enDetalleAdmin && previousRoute == "admin_mapa"),
             onClick = {
                 navController.navigate("admin_mapa") {
-                    popUpTo(navController.graph.startDestinationId)
-                    launchSingleTop = true
-                }
-            }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Group, contentDescription = "Usuarios") },
-            label = { Text("Usuarios") },
-            selected = currentRoute == "admin_usuarios",
-            onClick = {
-                navController.navigate("admin_usuarios") {
                     popUpTo(navController.graph.startDestinationId)
                     launchSingleTop = true
                 }

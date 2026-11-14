@@ -38,7 +38,9 @@ class HistoricoReportesViewModel(
     val uiState: StateFlow<HistoricoReportesUiState> = _uiState.asStateFlow()
 
     init {
-        refrescar()
+        viewModelScope.launch {
+            repository.refreshReports()
+        }
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 val marcadoresCalculados = construirMarcadoresReportes(lista)

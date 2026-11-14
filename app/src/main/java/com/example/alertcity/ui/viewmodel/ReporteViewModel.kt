@@ -43,8 +43,10 @@ class ReporteViewModel(
             }
         }
 
-        // Descarga inicial de reportes del Backend local
-        refrescar()
+        // Descarga inicial silenciosa en segundo plano
+        viewModelScope.launch {
+            repository.refreshReports()
+        }
     }
 
     fun refrescar() {

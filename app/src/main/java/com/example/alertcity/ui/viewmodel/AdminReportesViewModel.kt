@@ -51,7 +51,9 @@ class AdminReportesViewModel(
     val uiState: StateFlow<AdminReportesUiState> = _uiState.asStateFlow()
 
     init {
-        refrescar()
+        viewModelScope.launch {
+            repository.refreshReports()
+        }
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 _uiState.update { actual ->
