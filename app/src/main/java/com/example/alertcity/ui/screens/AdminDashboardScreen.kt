@@ -18,21 +18,23 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +48,7 @@ import com.example.alertcity.ui.components.AdminTopBar
 import com.example.alertcity.ui.components.ReporteItemCard
 import com.example.alertcity.ui.viewmodel.AdminReportesViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
     viewModel: AdminReportesViewModel,
@@ -59,25 +62,24 @@ fun AdminDashboardScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        if (uiState.cargando) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-
         AdminTopBar(
             titulo = "Panel Admin",
             subtitulo = "Gestión municipal • Uriangato, Gto.",
-            onCambiarModoCiudadano = onCambiarModoCiudadano,
-            onRefrescar = viewModel::refrescar
+            onCambiarModoCiudadano = onCambiarModoCiudadano
         )
 
-        // Resumen ejecutivo por estatus
+        // Resumen ejecutivo por estatus (estilo develop)
         ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp)) {
+            Column(modifier = Modifier.padding(vertical = 16.dp, horizontal = 12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -88,44 +90,48 @@ fun AdminDashboardScreen(
                         etiqueta = "Enviados",
                         color = MaterialTheme.colorScheme.primary
                     )
-                    VerticalDivider(modifier = Modifier.height(34.dp))
+                    VerticalDivider(modifier = Modifier.height(36.dp))
                     MetricaEstatusItem(
                         valor = uiState.totalEnRevision,
                         etiqueta = "Revisión",
                         color = MaterialTheme.colorScheme.secondary
                     )
-                    VerticalDivider(modifier = Modifier.height(34.dp))
+                    VerticalDivider(modifier = Modifier.height(36.dp))
                     MetricaEstatusItem(
                         valor = uiState.totalEnProceso,
                         etiqueta = "Atendiendo",
                         color = Color(0xFFEF6C00)
                     )
-                    VerticalDivider(modifier = Modifier.height(34.dp))
+                    VerticalDivider(modifier = Modifier.height(36.dp))
                     MetricaEstatusItem(
                         valor = uiState.totalResueltos,
                         etiqueta = "Resueltos",
-                        color = Color(0xFF2E7D32)
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
 
                 if (uiState.totalUrgentesActivos > 0) {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Surface(
                         onClick = { viewModel.onSoloUrgentesChange(!uiState.soloUrgentes) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
+                            .padding(horizontal = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (uiState.soloUrgentes) {
+                            MaterialTheme.colorScheme.errorContainer
+                        } else {
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f)
+                        }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PriorityHigh,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -133,6 +139,13 @@ fun AdminDashboardScreen(
                                 text = "${uiState.totalUrgentesActivos} reportes urgentes pendientes de resolver",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (uiState.soloUrgentes) "Mostrando" else "Filtrar",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
                         }
@@ -166,10 +179,20 @@ fun AdminDashboardScreen(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val todosSeleccionado = uiState.filtroEstado == null && !uiState.soloUrgentes
             item {
                 FilterChip(
-                    selected = uiState.filtroEstado == null && !uiState.soloUrgentes,
+                    selected = todosSeleccionado,
                     onClick = viewModel::limpiarFiltrosDashboard,
+                    leadingIcon = if (todosSeleccionado) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null,
                     label = { Text("Todos (${uiState.totalReportes})") }
                 )
             }
@@ -177,13 +200,32 @@ fun AdminDashboardScreen(
                 FilterChip(
                     selected = uiState.soloUrgentes,
                     onClick = { viewModel.onSoloUrgentesChange(!uiState.soloUrgentes) },
+                    leadingIcon = if (uiState.soloUrgentes) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null,
                     label = { Text("Urgentes") }
                 )
             }
             items(EstadoReporte.entries) { estado ->
+                val seleccionado = uiState.filtroEstado == estado
                 FilterChip(
-                    selected = uiState.filtroEstado == estado,
+                    selected = seleccionado,
                     onClick = { viewModel.onFiltroEstadoChange(estado) },
+                    leadingIcon = if (seleccionado) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null,
                     label = { Text(estado.etiqueta) }
                 )
             }
@@ -192,14 +234,13 @@ fun AdminDashboardScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(horizontal = 18.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Bandeja de atención (${uiState.reportesFiltrados.size})",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             if (uiState.filtroEstado != null || uiState.soloUrgentes || uiState.busqueda.isNotBlank()) {
@@ -209,25 +250,38 @@ fun AdminDashboardScreen(
             }
         }
 
-        if (uiState.reportesFiltrados.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No hay reportes que coincidan con el filtro actual.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
+        PullToRefreshBox(
+            isRefreshing = uiState.cargando,
+            onRefresh = { viewModel.refrescar() },
+            modifier = Modifier.fillMaxSize()
+        ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
             ) {
-                items(uiState.reportesFiltrados, key = { it.idReporte }) { reporte ->
-                    ReporteItemCard(
-                        reporte = reporte,
-                        onClick = { onReporteClick(reporte.idReporte) },
-                        modifier = Modifier.padding(bottom = 10.dp)
-                    )
+                if (uiState.reportesFiltrados.isEmpty() && !uiState.cargando) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 56.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No hay reportes que coincidan con el filtro actual.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    items(uiState.reportesFiltrados, key = { it.idReporte }) { reporte ->
+                        ReporteItemCard(
+                            reporte = reporte,
+                            onClick = { onReporteClick(reporte.idReporte) },
+                            modifier = Modifier.padding(bottom = 10.dp)
+                        )
+                    }
                 }
             }
         }
@@ -249,7 +303,7 @@ private fun MetricaEstatusItem(
         )
         Text(
             text = etiqueta,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

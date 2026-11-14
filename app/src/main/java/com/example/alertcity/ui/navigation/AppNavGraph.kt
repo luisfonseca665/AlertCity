@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -64,9 +65,24 @@ private fun FlujoNavegacionCiudadano(
     onEntrarModoAdmin: () -> Unit
 ) {
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
-        bottomBar = { MenuNavegacionInferior(navController) }
+        bottomBar = { MenuNavegacionInferior(navController) },
+        floatingActionButton = {
+            if (currentRoute == "inicio") {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        navController.navigate("crear") {
+                            launchSingleTop = true
+                        }
+                    },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Nuevo reporte") },
+                    text = { Text("Reportar") }
+                )
+            }
+        }
     ) { padding ->
         NavHost(
             navController = navController,
@@ -89,6 +105,7 @@ private fun FlujoNavegacionCiudadano(
                 )
                 CrearReportesScreen(
                     viewModel = crearReporteViewModel,
+                    onBack = { navController.popBackStack() },
                     onReporteGuardado = {
                         navController.navigate("inicio") { popUpTo(0) }
                     }
@@ -219,17 +236,6 @@ fun MenuNavegacionInferior(navController: NavHostController) {
             selected = currentRoute == "inicio" || (enDetalle && previousRoute != "historico"),
             onClick = {
                 navController.navigate("inicio") {
-                    popUpTo(navController.graph.startDestinationId)
-                    launchSingleTop = true
-                }
-            }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Add, contentDescription = "Reportar") },
-            label = { Text("Reportar") },
-            selected = currentRoute == "crear",
-            onClick = {
-                navController.navigate("crear") {
                     popUpTo(navController.graph.startDestinationId)
                     launchSingleTop = true
                 }

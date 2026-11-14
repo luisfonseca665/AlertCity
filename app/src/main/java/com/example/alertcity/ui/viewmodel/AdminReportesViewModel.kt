@@ -13,6 +13,7 @@ import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
 import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
 import com.example.alertcity.domain.util.MarcadorReporte
 import com.example.alertcity.domain.util.construirMarcadoresReportes
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +51,7 @@ class AdminReportesViewModel(
     val uiState: StateFlow<AdminReportesUiState> = _uiState.asStateFlow()
 
     init {
+        refrescar()
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 _uiState.update { actual ->
@@ -69,9 +71,15 @@ class AdminReportesViewModel(
     }
 
     fun refrescar() {
+        if (_uiState.value.cargando) return
         viewModelScope.launch {
+            val inicio = System.currentTimeMillis()
             _uiState.update { it.copy(cargando = true) }
             repository.refreshReports()
+            val transcurrido = System.currentTimeMillis() - inicio
+            if (transcurrido < 350L) {
+                delay(350L - transcurrido)
+            }
             _uiState.update { it.copy(cargando = false) }
         }
     }

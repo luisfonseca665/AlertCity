@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,10 +29,13 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.example.alertcity.ui.components.COLOR_PIN_ACTIVO
 import com.example.alertcity.ui.components.COLOR_PIN_RESUELTO
 import com.example.alertcity.ui.components.COLOR_PIN_URGENTE
+import com.example.alertcity.ui.components.MapaPreviewDialog
 import com.example.alertcity.ui.components.OsmMapCard
 import com.example.alertcity.ui.components.PinMapaUi
 import com.example.alertcity.ui.components.ReporteItemCard
@@ -49,12 +54,30 @@ import com.example.alertcity.ui.components.colorHexPorReporte
 import com.example.alertcity.ui.viewmodel.HistoricoReportesUiState
 import com.example.alertcity.ui.viewmodel.HistoricoReportesViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoricoReportesScreen(
     viewModel: HistoricoReportesViewModel,
     onReporteClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var mostrarPreviewMapa by remember { mutableStateOf(false) }
+
+    val seleccionadoId = uiState.reporteSeleccionado?.idReporte
+    val pines = remember(uiState.marcadores, seleccionadoId) {
+        uiState.marcadores.map { marcador ->
+            PinMapaUi(
+                id = marcador.reporte.idReporte,
+                latitud = marcador.latitud,
+                longitud = marcador.longitud,
+                colorHex = colorHexPorReporte(marcador.reporte),
+                titulo = marcador.reporte.titulo,
+                descripcion = "${marcador.reporte.categoria} • ${marcador.reporte.fechaHoraFormateada} • ${marcador.reporte.estado.etiqueta}" +
+                    if (!marcador.tieneUbicacionExacta) " (Ubicación aprox.)" else "",
+                mostrarInfoWindow = seleccionadoId == marcador.reporte.idReporte
+            )
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -65,15 +88,23 @@ fun HistoricoReportesScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.History,
-                contentDescription = "Histórico",
-                modifier = Modifier.size(40.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "Histórico",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -108,8 +139,10 @@ fun HistoricoReportesScreen(
 
         MapaIncidenciasCard(
             uiState = uiState,
+            pines = pines,
             onPinClick = viewModel::seleccionarReporteEnMapa,
             onCentrarMapa = viewModel::centrarVistaGeneral,
+            onAmpliarMapa = { mostrarPreviewMapa = true },
             onCerrarSeleccion = viewModel::limpiarSeleccionMapa,
             onVerDetalle = onReporteClick
         )
@@ -124,28 +157,56 @@ fun HistoricoReportesScreen(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
         )
 
-        if (uiState.reportes.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No hay reportes disponibles", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
+        PullToRefreshBox(
+            isRefreshing = uiState.cargando,
+            onRefresh = { viewModel.refrescar() },
+            modifier = Modifier.fillMaxSize()
+        ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
             ) {
-                items(uiState.reportes, key = { it.idReporte }) { reporte ->
-                    val estaSeleccionado = uiState.reporteSeleccionado?.idReporte == reporte.idReporte
+                if (uiState.reportes.isEmpty() && !uiState.cargando) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No hay reportes disponibles",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    items(uiState.reportes, key = { it.idReporte }) { reporte ->
+                        val estaSeleccionado = uiState.reporteSeleccionado?.idReporte == reporte.idReporte
 
-                    ReporteItemCard(
-                        reporte = reporte,
-                        onClick = { onReporteClick(reporte.idReporte) },
-                        modifier = Modifier.padding(bottom = 10.dp),
-                        seleccionado = estaSeleccionado,
-                        onUbicarEnMapaClick = { viewModel.seleccionarReporteEnMapa(reporte.idReporte) }
-                    )
+                        ReporteItemCard(
+                            reporte = reporte,
+                            onClick = { onReporteClick(reporte.idReporte) },
+                            modifier = Modifier.padding(bottom = 10.dp),
+                            seleccionado = estaSeleccionado,
+                            onUbicarEnMapaClick = { viewModel.seleccionarReporteEnMapa(reporte.idReporte) }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    if (mostrarPreviewMapa) {
+        MapaPreviewDialog(
+            titulo = "Mapa de incidencias",
+            subtitulo = "${uiState.reportes.size} reportes registrados",
+            latitudInicial = uiState.latitudCentro,
+            longitudInicial = uiState.longitudCentro,
+            pines = pines,
+            zoomInicial = uiState.zoomMapa,
+            onDismiss = { mostrarPreviewMapa = false }
+        )
     }
 }
 
@@ -166,27 +227,13 @@ private fun LeyendaItem(color: Color, texto: String) {
 @Composable
 private fun MapaIncidenciasCard(
     uiState: HistoricoReportesUiState,
+    pines: List<PinMapaUi>,
     onPinClick: (String) -> Unit,
     onCentrarMapa: () -> Unit,
+    onAmpliarMapa: () -> Unit,
     onCerrarSeleccion: () -> Unit,
     onVerDetalle: (String) -> Unit
 ) {
-    val seleccionadoId = uiState.reporteSeleccionado?.idReporte
-    val pines = remember(uiState.marcadores, seleccionadoId) {
-        uiState.marcadores.map { marcador ->
-            PinMapaUi(
-                id = marcador.reporte.idReporte,
-                latitud = marcador.latitud,
-                longitud = marcador.longitud,
-                colorHex = colorHexPorReporte(marcador.reporte),
-                titulo = marcador.reporte.titulo,
-                descripcion = "${marcador.reporte.categoria} • ${marcador.reporte.fechaHoraFormateada} • ${marcador.reporte.estado.etiqueta}" +
-                    if (!marcador.tieneUbicacionExacta) " (Ubicación aprox.)" else "",
-                mostrarInfoWindow = seleccionadoId == marcador.reporte.idReporte
-            )
-        }
-    }
-
     OsmMapCard(
         latitudCamara = uiState.latitudCentro,
         longitudCamara = uiState.longitudCentro,
@@ -198,6 +245,8 @@ private fun MapaIncidenciasCard(
         alto = 250.dp,
         radioEsquina = 16.dp,
         elevacion = 4.dp,
+        onAmpliarClick = onAmpliarMapa,
+        alineacionBotonAmpliar = Alignment.TopStart,
         onPinClick = onPinClick
     ) {
         // Botón flotante para recentrar el mapa

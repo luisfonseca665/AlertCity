@@ -12,14 +12,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,8 +37,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.example.alertcity.domain.model.Reporte
-import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -72,9 +71,12 @@ fun OsmMapCard(
     zoomCamara: Double = zoomInicial,
     animarTrigger: Int = 0,
     alto: Dp? = 220.dp,
-    radioEsquina: Dp = 14.dp,
+    ocuparTodoElAlto: Boolean = false,
+    radioEsquina: Dp = 16.dp,
     elevacion: Dp = 3.dp,
     etiquetaInferior: String? = null,
+    onAmpliarClick: (() -> Unit)? = null,
+    alineacionBotonAmpliar: Alignment = Alignment.TopEnd,
     onMapClick: ((Double, Double) -> Unit)? = null,
     onPinClick: ((String) -> Unit)? = null,
     contenidoSuperpuesto: @Composable BoxScope.() -> Unit = {}
@@ -120,10 +122,14 @@ fun OsmMapCard(
         }
     }
 
+    val cardModifier = when {
+        ocuparTodoElAlto -> modifier.fillMaxSize()
+        alto != null -> modifier.fillMaxWidth().height(alto)
+        else -> modifier.fillMaxWidth()
+    }
+
     ElevatedCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .let { base -> if (alto != null) base.height(alto) else base },
+        modifier = cardModifier,
         shape = RoundedCornerShape(radioEsquina),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = elevacion)
     ) {
@@ -205,24 +211,48 @@ fun OsmMapCard(
                 }
             )
 
+            if (onAmpliarClick != null) {
+                Surface(
+                    onClick = onAmpliarClick,
+                    modifier = Modifier
+                        .align(alineacionBotonAmpliar)
+                        .padding(10.dp)
+                        .size(36.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    tonalElevation = 4.dp,
+                    shadowElevation = 3.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.OpenInFull,
+                            contentDescription = "Previsualizar mapa",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
             if (etiquetaInferior != null) {
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(8.dp),
-                    shape = RoundedCornerShape(8.dp),
+                        .padding(10.dp),
+                    shape = RoundedCornerShape(50),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    tonalElevation = 4.dp
+                    tonalElevation = 4.dp,
+                    shadowElevation = 2.dp
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -236,61 +266,4 @@ fun OsmMapCard(
             contenidoSuperpuesto()
         }
     }
-}
-
-@Composable
-fun ReporteUbicacionDetalleCard(reporte: Reporte) {
-    val coordenadasParseadas = remember(reporte.ubicacion) {
-        parsearCoordenadasUbicacion(reporte.ubicacion)
-    }
-
-    if (coordenadasParseadas == null) {
-        OutlinedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = reporte.ubicacion?.takeIf { it.isNotBlank() }
-                        ?: "Sin ubicación exacta registrada",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        return
-    }
-
-    val (latitud, longitud) = coordenadasParseadas
-    val pines = remember(reporte.idReporte, reporte.titulo, reporte.categoria, reporte.estado, reporte.esUrgente, latitud, longitud) {
-        listOf(
-            PinMapaUi(
-                id = reporte.idReporte,
-                latitud = latitud,
-                longitud = longitud,
-                colorHex = colorHexPorReporte(reporte),
-                titulo = reporte.titulo,
-                descripcion = "${reporte.categoria} • ${reporte.fechaHoraFormateada} • ${reporte.estado.etiqueta}",
-                mostrarInfoWindow = true
-            )
-        )
-    }
-
-    OsmMapCard(
-        latitudCamara = latitud,
-        longitudCamara = longitud,
-        pines = pines,
-        zoomInicial = 16.5,
-        zoomCamara = 16.5,
-        etiquetaInferior = reporte.ubicacion
-    )
 }

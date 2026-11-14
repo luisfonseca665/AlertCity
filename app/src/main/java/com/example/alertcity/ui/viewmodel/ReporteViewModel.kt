@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.alertcity.AlertCityApp
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,9 +48,15 @@ class ReporteViewModel(
     }
 
     fun refrescar() {
+        if (_uiState.value.cargando) return
         viewModelScope.launch {
+            val inicio = System.currentTimeMillis()
             _uiState.update { it.copy(cargando = true) }
             repository.refreshReports()
+            val transcurrido = System.currentTimeMillis() - inicio
+            if (transcurrido < 350L) {
+                delay(350L - transcurrido)
+            }
             _uiState.update { it.copy(cargando = false) }
         }
     }

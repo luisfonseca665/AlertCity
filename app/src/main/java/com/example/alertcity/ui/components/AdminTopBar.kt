@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Refresh
@@ -38,12 +39,12 @@ fun AdminTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(44.dp)
+                .size(46.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
@@ -52,7 +53,7 @@ fun AdminTopBar(
                 imageVector = Icons.Default.AdminPanelSettings,
                 contentDescription = "Modo Administrador",
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(25.dp)
             )
         }
 
@@ -86,9 +87,12 @@ fun AdminTopBar(
             }
         }
 
+        Spacer(modifier = Modifier.width(4.dp))
+
         FilledTonalButton(
             onClick = onCambiarModoCiudadano,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.SwapHoriz,
@@ -98,7 +102,8 @@ fun AdminTopBar(
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "Ciudadano",
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }

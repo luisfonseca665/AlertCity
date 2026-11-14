@@ -12,6 +12,7 @@ import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
 import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
 import com.example.alertcity.domain.util.MarcadorReporte
 import com.example.alertcity.domain.util.construirMarcadoresReportes
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +26,8 @@ data class HistoricoReportesUiState(
     val latitudCentro: Double = LATITUD_CIUDAD_DEFECTO,
     val longitudCentro: Double = LONGITUD_CIUDAD_DEFECTO,
     val zoomMapa: Double = 15.0,
-    val enfocarTrigger: Int = 0
+    val enfocarTrigger: Int = 0,
+    val cargando: Boolean = false
 )
 
 class HistoricoReportesViewModel(
@@ -36,9 +38,7 @@ class HistoricoReportesViewModel(
     val uiState: StateFlow<HistoricoReportesUiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            repository.refreshReports()
-        }
+        refrescar()
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 val marcadoresCalculados = construirMarcadoresReportes(lista)
@@ -58,6 +58,20 @@ class HistoricoReportesViewModel(
                     )
                 }
             }
+        }
+    }
+
+    fun refrescar() {
+        if (_uiState.value.cargando) return
+        viewModelScope.launch {
+            val inicio = System.currentTimeMillis()
+            _uiState.update { it.copy(cargando = true) }
+            repository.refreshReports()
+            val transcurrido = System.currentTimeMillis() - inicio
+            if (transcurrido < 350L) {
+                delay(350L - transcurrido)
+            }
+            _uiState.update { it.copy(cargando = false) }
         }
     }
 

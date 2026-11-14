@@ -12,6 +12,7 @@ import com.example.alertcity.domain.model.Usuario
 import com.example.alertcity.domain.repository.ReporteRepository
 import com.example.alertcity.domain.repository.UsuarioRepository
 import java.util.UUID
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,7 @@ data class AdminUsuariosUiState(
     val todosLosUsuarios: List<UsuarioEstadisticaUi> = emptyList(),
     val usuariosFiltrados: List<UsuarioEstadisticaUi> = emptyList(),
     val busqueda: String = "",
+    val cargando: Boolean = false,
     val mostrarDialogoFormulario: Boolean = false,
     val idUsuarioEditando: String? = null,
     val nombreForm: String = "",
@@ -72,6 +74,21 @@ class AdminUsuariosViewModel(
                     conLista.copy(usuariosFiltrados = filtrarUsuarios(estadisticas, conLista.busqueda))
                 }
             }
+        }
+    }
+
+    fun refrescar() {
+        if (_uiState.value.cargando) return
+        viewModelScope.launch {
+            val inicio = System.currentTimeMillis()
+            _uiState.update { it.copy(cargando = true) }
+            usuarioRepository.ensureSeedUsers()
+            reporteRepository.refreshReports()
+            val transcurrido = System.currentTimeMillis() - inicio
+            if (transcurrido < 350L) {
+                delay(350L - transcurrido)
+            }
+            _uiState.update { it.copy(cargando = false) }
         }
     }
 

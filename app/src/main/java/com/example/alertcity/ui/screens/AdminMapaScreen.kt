@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.FilledTonalButton
@@ -32,7 +33,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +48,7 @@ import com.example.alertcity.ui.components.AdminTopBar
 import com.example.alertcity.ui.components.COLOR_PIN_ACTIVO
 import com.example.alertcity.ui.components.COLOR_PIN_RESUELTO
 import com.example.alertcity.ui.components.COLOR_PIN_URGENTE
+import com.example.alertcity.ui.components.MapaPreviewDialog
 import com.example.alertcity.ui.components.OsmMapCard
 import com.example.alertcity.ui.components.PinMapaUi
 import com.example.alertcity.ui.components.colorHexPorReporte
@@ -57,6 +61,7 @@ fun AdminMapaScreen(
     onCambiarModoCiudadano: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var mostrarPreviewMapa by remember { mutableStateOf(false) }
     val seleccionadoId = uiState.reporteSeleccionadoMapa?.idReporte
 
     val pines = remember(uiState.marcadoresMapa, seleccionadoId) {
@@ -67,7 +72,7 @@ fun AdminMapaScreen(
                 longitud = marcador.longitud,
                 colorHex = colorHexPorReporte(marcador.reporte),
                 titulo = marcador.reporte.titulo,
-                descripcion = "${marcador.reporte.categoria} • ${marcador.reporte.estado.etiqueta}" +
+                descripcion = "${marcador.reporte.categoria} • ${marcador.reporte.fechaHoraFormateada} • ${marcador.reporte.estado.etiqueta}" +
                     if (!marcador.tieneUbicacionExacta) " (Ubicación aprox.)" else "",
                 mostrarInfoWindow = seleccionadoId == marcador.reporte.idReporte
             )
@@ -91,13 +96,23 @@ fun AdminMapaScreen(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val todosSeleccionado = uiState.mapaFiltroEstado == null && !uiState.mapaSoloUrgentes
             item {
                 FilterChip(
-                    selected = uiState.mapaFiltroEstado == null && !uiState.mapaSoloUrgentes,
+                    selected = todosSeleccionado,
                     onClick = {
                         viewModel.onMapaFiltroEstadoChange(null)
                         viewModel.onMapaSoloUrgentesChange(false)
                     },
+                    leadingIcon = if (todosSeleccionado) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null,
                     label = { Text("Todos") }
                 )
             }
@@ -105,13 +120,32 @@ fun AdminMapaScreen(
                 FilterChip(
                     selected = uiState.mapaSoloUrgentes,
                     onClick = { viewModel.onMapaSoloUrgentesChange(!uiState.mapaSoloUrgentes) },
+                    leadingIcon = if (uiState.mapaSoloUrgentes) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null,
                     label = { Text("Solo Urgentes") }
                 )
             }
             items(EstadoReporte.entries) { estado ->
+                val seleccionado = uiState.mapaFiltroEstado == estado
                 FilterChip(
-                    selected = uiState.mapaFiltroEstado == estado,
+                    selected = seleccionado,
                     onClick = { viewModel.onMapaFiltroEstadoChange(estado) },
+                    leadingIcon = if (seleccionado) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null,
                     label = { Text(estado.etiqueta) }
                 )
             }
@@ -141,15 +175,17 @@ fun AdminMapaScreen(
             zoomCamara = uiState.zoomMapa,
             animarTrigger = uiState.enfocarTrigger,
             alto = null,
-            radioEsquina = 16.dp,
+            radioEsquina = 18.dp,
             elevacion = 4.dp,
+            onAmpliarClick = { mostrarPreviewMapa = true },
+            alineacionBotonAmpliar = Alignment.TopStart,
             onPinClick = viewModel::seleccionarReporteEnMapa
         ) {
             SmallFloatingActionButton(
                 onClick = viewModel::centrarVistaGeneralMapa,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(12.dp),
+                    .padding(10.dp),
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
@@ -160,17 +196,18 @@ fun AdminMapaScreen(
             }
 
             uiState.reporteSeleccionadoMapa?.let { seleccionado ->
+                val esResuelto = seleccionado.estado == EstadoReporte.RESUELTO
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .padding(10.dp),
-                    shape = RoundedCornerShape(14.dp),
+                        .padding(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
                     tonalElevation = 6.dp,
-                    shadowElevation = 4.dp
+                    shadowElevation = 6.dp
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -181,7 +218,7 @@ fun AdminMapaScreen(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = "${seleccionado.categoria} • ${seleccionado.estado.etiqueta}",
+                                    text = "${seleccionado.categoria} • ${seleccionado.fechaHoraFormateada}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -200,29 +237,86 @@ fun AdminMapaScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            if (seleccionado.estado != EstadoReporte.RESUELTO) {
-                                TextButton(onClick = { viewModel.avanzarEstadoReporte(seleccionado) }) {
-                                    Text("Avanzar estatus")
-                                }
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-                            FilledTonalButton(
-                                onClick = { onGestionarReporte(seleccionado.idReporte) },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Gestionar")
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (esResuelto) {
+                                        MaterialTheme.colorScheme.tertiaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    }
+                                ) {
+                                    Text(
+                                        text = seleccionado.estado.etiqueta,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (esResuelto) {
+                                            MaterialTheme.colorScheme.onTertiaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        },
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+
+                                if (seleccionado.esUrgente) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.errorContainer
+                                    ) {
+                                        Text(
+                                            text = "URGENTE",
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (!esResuelto) {
+                                    TextButton(onClick = { viewModel.avanzarEstadoReporte(seleccionado) }) {
+                                        Text("Avanzar estatus")
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                FilledTonalButton(
+                                    onClick = { onGestionarReporte(seleccionado.idReporte) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Gestionar")
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (mostrarPreviewMapa) {
+        MapaPreviewDialog(
+            titulo = "Mapa Operativo Municipal",
+            subtitulo = "${uiState.marcadoresMapa.size} incidencias mostradas",
+            latitudInicial = uiState.latitudCentro,
+            longitudInicial = uiState.longitudCentro,
+            pines = pines,
+            zoomInicial = uiState.zoomMapa,
+            onDismiss = { mostrarPreviewMapa = false }
+        )
     }
 }
 

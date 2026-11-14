@@ -28,6 +28,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,6 +53,7 @@ import com.example.alertcity.ui.components.AdminTopBar
 import com.example.alertcity.ui.viewmodel.AdminUsuariosViewModel
 import com.example.alertcity.ui.viewmodel.UsuarioEstadisticaUi
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminUsuariosScreen(
     viewModel: AdminUsuariosViewModel,
@@ -73,12 +76,16 @@ fun AdminUsuariosScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(vertical = 16.dp, horizontal = 14.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -91,11 +98,11 @@ fun AdminUsuariosScreen(
                     )
                     Text(
                         text = "Registrados",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                VerticalDivider(modifier = Modifier.height(34.dp))
+                VerticalDivider(modifier = Modifier.height(36.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "${uiState.totalConReportesActivos}",
@@ -105,12 +112,13 @@ fun AdminUsuariosScreen(
                     )
                     Text(
                         text = "Con reportes activos",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 FilledTonalButton(
                     onClick = viewModel::abrirDialogoNuevoUsuario,
+                    shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Icon(
@@ -119,7 +127,11 @@ fun AdminUsuariosScreen(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Nuevo")
+                    Text(
+                        text = "Nuevo",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -143,25 +155,38 @@ fun AdminUsuariosScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
-        if (uiState.usuariosFiltrados.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No se encontraron usuarios registrados.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
+        PullToRefreshBox(
+            isRefreshing = uiState.cargando,
+            onRefresh = { viewModel.refrescar() },
+            modifier = Modifier.fillMaxSize()
+        ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
             ) {
-                items(uiState.usuariosFiltrados, key = { it.usuario.idUsuario }) { item ->
-                    UsuarioAdminCard(
-                        item = item,
-                        onEditar = { viewModel.abrirDialogoEditarUsuario(item.usuario) },
-                        onEliminar = { viewModel.solicitarEliminarUsuario(item.usuario) },
-                        modifier = Modifier.padding(bottom = 10.dp)
-                    )
+                if (uiState.usuariosFiltrados.isEmpty() && !uiState.cargando) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 56.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No se encontraron usuarios registrados.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    items(uiState.usuariosFiltrados, key = { it.usuario.idUsuario }) { item ->
+                        UsuarioAdminCard(
+                            item = item,
+                            onEditar = { viewModel.abrirDialogoEditarUsuario(item.usuario) },
+                            onEliminar = { viewModel.solicitarEliminarUsuario(item.usuario) },
+                            modifier = Modifier.padding(bottom = 10.dp)
+                        )
+                    }
                 }
             }
         }
@@ -170,15 +195,20 @@ fun AdminUsuariosScreen(
     if (uiState.mostrarDialogoFormulario) {
         AlertDialog(
             onDismissRequest = viewModel::cerrarDialogoFormulario,
+            shape = RoundedCornerShape(20.dp),
             title = {
-                Text(if (uiState.idUsuarioEditando != null) "Editar ciudadano" else "Registrar ciudadano")
+                Text(
+                    text = if (uiState.idUsuarioEditando != null) "Editar ciudadano" else "Registrar ciudadano",
+                    fontWeight = FontWeight.Bold
+                )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = uiState.nombreForm,
                         onValueChange = viewModel::onNombreFormChange,
                         label = { Text("Nombre(s)") },
+                        shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -186,6 +216,7 @@ fun AdminUsuariosScreen(
                         value = uiState.apellidoForm,
                         onValueChange = viewModel::onApellidoFormChange,
                         label = { Text("Apellido(s)") },
+                        shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -193,6 +224,7 @@ fun AdminUsuariosScreen(
                         value = uiState.usuarioForm,
                         onValueChange = viewModel::onUsuarioFormChange,
                         label = { Text("Usuario") },
+                        shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -200,6 +232,7 @@ fun AdminUsuariosScreen(
                         value = uiState.direccionForm,
                         onValueChange = viewModel::onDireccionFormChange,
                         label = { Text("Dirección / Colonia") },
+                        shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -208,6 +241,7 @@ fun AdminUsuariosScreen(
                         onValueChange = viewModel::onContrasenaFormChange,
                         label = { Text("Contraseña") },
                         visualTransformation = PasswordVisualTransformation(),
+                        shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -218,7 +252,7 @@ fun AdminUsuariosScreen(
                     onClick = viewModel::guardarUsuario,
                     enabled = uiState.formularioValido
                 ) {
-                    Text("Guardar")
+                    Text("Guardar", fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -232,7 +266,8 @@ fun AdminUsuariosScreen(
     uiState.usuarioPorEliminar?.let { usuario ->
         AlertDialog(
             onDismissRequest = viewModel::cancelarEliminarUsuario,
-            title = { Text("Eliminar usuario") },
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("Eliminar usuario", fontWeight = FontWeight.Bold) },
             text = {
                 Text("¿Deseas eliminar a ${usuario.nombre} ${usuario.apellido} (@${usuario.usuario}) del registro local?")
             },
@@ -241,7 +276,7 @@ fun AdminUsuariosScreen(
                     onClick = viewModel::confirmarEliminarUsuario,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Eliminar")
+                    Text("Eliminar", fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -265,28 +300,32 @@ private fun UsuarioAdminCard(
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.5.dp)
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = iniciales,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -301,7 +340,7 @@ private fun UsuarioAdminCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
@@ -321,25 +360,28 @@ private fun UsuarioAdminCard(
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer
                     ) {
                         Text(
                             text = "${item.totalReportes} reportes",
                             style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
                     if (item.reportesActivos > 0) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {
                             Text(
                                 text = "${item.reportesActivos} activos",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
                     }
