@@ -35,6 +35,8 @@ import com.example.alertcity.ui.screens.CrearReportesScreen
 import com.example.alertcity.ui.screens.DetalleReporteScreen
 import com.example.alertcity.ui.screens.HistoricoReportesScreen
 import com.example.alertcity.ui.screens.ListaReportesScreen
+import com.example.alertcity.ui.screens.LoginScreen
+import com.example.alertcity.ui.screens.RegistroScreen
 import com.example.alertcity.ui.viewmodel.AdminReportesViewModel
 import com.example.alertcity.ui.viewmodel.CrearReporteViewModel
 import com.example.alertcity.ui.viewmodel.HistoricoReportesViewModel
@@ -42,6 +44,7 @@ import com.example.alertcity.ui.viewmodel.ReporteViewModel
 
 @Composable
 fun AppNavGraph(viewModel: ReporteViewModel) {
+    var sesionIniciada by rememberSaveable { mutableStateOf(false) }
     var modoAdmin by rememberSaveable { mutableStateOf(false) }
 
     if (modoAdmin) {
@@ -51,6 +54,8 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
     } else {
         FlujoNavegacionCiudadano(
             viewModel = viewModel,
+            sesionIniciada = sesionIniciada,
+            onSesionIniciadaChange = { sesionIniciada = it },
             onEntrarModoAdmin = { modoAdmin = true }
         )
     }
@@ -59,14 +64,24 @@ fun AppNavGraph(viewModel: ReporteViewModel) {
 @Composable
 private fun FlujoNavegacionCiudadano(
     viewModel: ReporteViewModel,
+    sesionIniciada: Boolean,
+    onSesionIniciadaChange: (Boolean) -> Unit,
     onEntrarModoAdmin: () -> Unit
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val mostrarBarraInferior = currentRoute != null &&
+        currentRoute != "login" &&
+        currentRoute != "registro"
+
     Scaffold(
-        bottomBar = { MenuNavegacionInferior(navController) },
+        bottomBar = {
+            if (mostrarBarraInferior) {
+                MenuNavegacionInferior(navController)
+            }
+        },
         floatingActionButton = {
             if (currentRoute == "inicio") {
                 ExtendedFloatingActionButton(
@@ -83,16 +98,55 @@ private fun FlujoNavegacionCiudadano(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = "inicio",
+            startDestination = if (sesionIniciada) "inicio" else "login",
             modifier = Modifier.padding(padding)
         ) {
+            composable("login") {
+                LoginScreen(
+                    onLoginExitoso = {
+                        onSesionIniciadaChange(true)
+                        navController.navigate("inicio") {
+                            popUpTo("login") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onIrARegistroClick = {
+                        navController.navigate("registro") {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            composable("registro") {
+                RegistroScreen(
+                    onRegistroExitoso = {
+                        onSesionIniciadaChange(true)
+                        navController.navigate("inicio") {
+                            popUpTo("login") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onVolverALoginClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
             composable("inicio") {
                 ListaReportesScreen(
                     viewModel = viewModel,
                     onReporteClick = { id ->
                         navController.navigate("detalle/$id")
                     },
-                    onCambiarModoAdmin = onEntrarModoAdmin
+                    onCambiarModoAdmin = onEntrarModoAdmin,
+                    onCerrarSesion = {
+                        onSesionIniciadaChange(false)
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
 
@@ -104,7 +158,10 @@ private fun FlujoNavegacionCiudadano(
                     viewModel = crearReporteViewModel,
                     onBack = { navController.popBackStack() },
                     onReporteGuardado = {
-                        navController.navigate("inicio") { popUpTo(0) }
+                        navController.navigate("inicio") {
+                            popUpTo("inicio") { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
@@ -223,7 +280,7 @@ fun MenuNavegacionInferior(navController: NavHostController) {
             selected = currentRoute == "inicio" || (enDetalle && previousRoute != "historico"),
             onClick = {
                 navController.navigate("inicio") {
-                    popUpTo(navController.graph.startDestinationId)
+                    popUpTo("inicio") { inclusive = false }
                     launchSingleTop = true
                 }
             }
@@ -234,7 +291,7 @@ fun MenuNavegacionInferior(navController: NavHostController) {
             selected = currentRoute == "historico" || (enDetalle && previousRoute == "historico"),
             onClick = {
                 navController.navigate("historico") {
-                    popUpTo(navController.graph.startDestinationId)
+                    popUpTo("inicio") { inclusive = false }
                     launchSingleTop = true
                 }
             }
