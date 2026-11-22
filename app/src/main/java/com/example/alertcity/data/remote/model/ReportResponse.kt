@@ -13,5 +13,6 @@ data class ReportResponse(
     @SerializedName("latitude") val latitude: Double?,
     @SerializedName("longitude") val longitude: Double?,
     @SerializedName("addressReference") val addressReference: String?,
-    @SerializedName("state") val state: String
+    @SerializedName("state") val state: String,
+    @SerializedName("imageUrl") val imageUrl: String? = null
 )

@@ -3,8 +3,6 @@ package com.example.alertcity.ui.screens
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
-import android.location.LocationManager
 import android.net.Uri
 import android.view.MotionEvent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,14 +32,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
-import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
+import com.example.alertcity.data.location.LocationHelper
+import com.example.alertcity.data.media.ImageCompressor
 import com.example.alertcity.ui.components.aplicarEstiloModerno
 import com.example.alertcity.ui.components.colorHexPin
 import com.example.alertcity.ui.components.configurarOsmdroid
@@ -48,6 +46,7 @@ import com.example.alertcity.ui.components.crearPinMapa
 import com.example.alertcity.ui.viewmodel.CrearReporteUiState
 import com.example.alertcity.ui.viewmodel.CrearReporteViewModel
 import java.io.File
+import kotlinx.coroutines.launch
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -65,44 +64,6 @@ fun crearUriTemporal(context: Context): Uri {
     )
 }
 
-fun copiarAAlmacenamientoInterno(context: Context, uriOrigen: Uri): Uri {
-    return try {
-        val directorio = File(context.filesDir, "reportes_fotos").apply { if (!exists()) mkdirs() }
-        val archivoDestino = File(directorio, "foto_${System.currentTimeMillis()}.jpg")
-        context.contentResolver.openInputStream(uriOrigen)?.use { input ->
-            archivoDestino.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-        Uri.fromFile(archivoDestino)
-    } catch (e: Exception) {
-        e.printStackTrace()
-        uriOrigen
-    }
-}
-
-fun obtenerCoordenadasDispositivo(context: Context): Pair<Double, Double> {
-    return try {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        if (locationManager != null &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        ) {
-            val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            if (location != null) {
-                location.latitude to location.longitude
-            } else {
-                LATITUD_CIUDAD_DEFECTO to LONGITUD_CIUDAD_DEFECTO
-            }
-        } else {
-            LATITUD_CIUDAD_DEFECTO to LONGITUD_CIUDAD_DEFECTO
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        LATITUD_CIUDAD_DEFECTO to LONGITUD_CIUDAD_DEFECTO
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CrearReportesScreen(
@@ -111,30 +72,42 @@ fun CrearReportesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.sincronizarHoraActualSiNoEsPersonalizada()
+        if (LocationHelper.tienePermisoUbicacion(context) && uiState.latitudSeleccionada == null) {
+            val (lat, lng) = LocationHelper.obtenerCoordenadas(context)
+            viewModel.onUbicacionGpsObtenida(lat, lng)
+        }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
-            val uriInterna = copiarAAlmacenamientoInterno(context, uri)
-            viewModel.onFotoCapturada(uriInterna.toString())
+            coroutineScope.launch {
+                val uriInterna = ImageCompressor.compressAndSaveToInternalStorage(context, uri)
+                viewModel.onFotoCapturada((uriInterna ?: uri).toString())
+            }
         }
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
         val tempUriActual = viewModel.uiState.value.tempUri
         if (exito && tempUriActual != null) {
-            val uriInterna = copiarAAlmacenamientoInterno(context, Uri.parse(tempUriActual))
-            viewModel.onFotoCapturada(uriInterna.toString())
+            coroutineScope.launch {
+                val sourceUri = Uri.parse(tempUriActual)
+                val uriInterna = ImageCompressor.compressAndSaveToInternalStorage(context, sourceUri)
+                viewModel.onFotoCapturada((uriInterna ?: sourceUri).toString())
+            }
         }
     }
 
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedido ->
         if (concedido) {
-            val coordenadas = obtenerCoordenadasDispositivo(context)
-            viewModel.onUbicacionGpsObtenida(coordenadas.first, coordenadas.second)
+            coroutineScope.launch {
+                val coordenadas = LocationHelper.obtenerCoordenadas(context)
+                viewModel.onUbicacionGpsObtenida(coordenadas.first, coordenadas.second)
+            }
         }
     }
 
@@ -244,7 +217,16 @@ fun CrearReportesScreen(
             }
 
             OutlinedButton(
-                onClick = { locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+                onClick = {
+                    if (LocationHelper.tienePermisoUbicacion(context)) {
+                        coroutineScope.launch {
+                            val coordenadas = LocationHelper.obtenerCoordenadas(context)
+                            viewModel.onUbicacionGpsObtenida(coordenadas.first, coordenadas.second)
+                        }
+                    } else {
+                        locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }
+                },
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.LocationOn, contentDescription = "Ubicación", modifier = Modifier.padding(end = 4.dp))

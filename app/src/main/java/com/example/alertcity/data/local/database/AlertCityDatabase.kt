@@ -14,7 +14,7 @@ import com.example.alertcity.data.local.entity.UsuarioEntity
 
 @Database(
     entities = [ReporteEntity::class, UsuarioEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(ReporteConverters::class)
@@ -33,6 +33,16 @@ abstract class AlertCityDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reportes ADD COLUMN latitud REAL")
+                db.execSQL("ALTER TABLE reportes ADD COLUMN longitud REAL")
+                db.execSQL("ALTER TABLE reportes ADD COLUMN syncStatus TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE reportes ADD COLUMN localFotoUri TEXT")
+                db.execSQL("ALTER TABLE reportes ADD COLUMN syncError TEXT")
+            }
+        }
+
         fun getDatabase(context: Context): AlertCityDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -40,7 +50,7 @@ abstract class AlertCityDatabase : RoomDatabase() {
                     AlertCityDatabase::class.java,
                     "alert_city_database"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 INSTANCE = instance
                 instance

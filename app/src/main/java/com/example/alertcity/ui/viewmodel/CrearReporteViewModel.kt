@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.alertcity.AlertCityApp
+import com.example.alertcity.data.local.SessionManager
 import com.example.alertcity.data.remote.NetworkConstants
 import com.example.alertcity.domain.model.Reporte
+import com.example.alertcity.domain.model.SyncStatus
 import com.example.alertcity.domain.repository.ReporteRepository
 import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
 import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
@@ -77,7 +79,8 @@ data class CrearReporteUiState(
 }
 
 class CrearReporteViewModel(
-    private val repository: ReporteRepository
+    private val repository: ReporteRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CrearReporteUiState())
@@ -190,7 +193,7 @@ class CrearReporteViewModel(
             }
 
             val nuevo = Reporte(
-                idUsuario = NetworkConstants.DEMO_USER_ID,
+                idUsuario = sessionManager.currentSession?.userId ?: NetworkConstants.DEMO_USER_ID,
                 titulo = estadoActual.titulo,
                 descripcion = estadoActual.descripcion,
                 categoria = estadoActual.categoria,
@@ -198,7 +201,11 @@ class CrearReporteViewModel(
                 hora = horaFinal,
                 fechaCreacion = ahora.timeInMillis,
                 fotoUri = estadoActual.fotoUri,
-                ubicacion = estadoActual.ubicacion
+                ubicacion = estadoActual.ubicacion,
+                latitud = estadoActual.latitudSeleccionada,
+                longitud = estadoActual.longitudSeleccionada,
+                syncStatus = SyncStatus.SYNC_PENDING,
+                localFotoUri = estadoActual.fotoUri
             )
             repository.saveReport(
                 report = nuevo,
@@ -214,7 +221,7 @@ class CrearReporteViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as AlertCityApp)
-                CrearReporteViewModel(app.reporteRepository)
+                CrearReporteViewModel(app.reporteRepository, app.sessionManager)
             }
         }
     }

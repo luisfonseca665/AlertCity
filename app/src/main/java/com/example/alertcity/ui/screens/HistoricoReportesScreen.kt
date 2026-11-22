@@ -1,6 +1,9 @@
 package com.example.alertcity.ui.screens
 
+import android.Manifest
 import android.annotation.SuppressLint
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,6 +25,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +38,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.alertcity.data.location.LocationHelper
 import com.example.alertcity.ui.components.COLOR_PIN_ACTIVO
 import com.example.alertcity.ui.components.COLOR_PIN_RESUELTO
 import com.example.alertcity.ui.components.COLOR_PIN_URGENTE
@@ -43,6 +48,7 @@ import com.example.alertcity.ui.components.configurarOsmdroid
 import com.example.alertcity.ui.components.crearPinMapa
 import com.example.alertcity.ui.viewmodel.HistoricoReportesUiState
 import com.example.alertcity.ui.viewmodel.HistoricoReportesViewModel
+import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -54,12 +60,27 @@ fun HistoricoReportesScreen(
     onReporteClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val nearbyLocationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        coroutineScope.launch {
+            val (lat, lng) = LocationHelper.obtenerCoordenadas(context)
+            viewModel.cargarReportesCercanos(lat, lng, radiusKm = 3.0)
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        if (uiState.cargando) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
         // Cabecera compacta
         Row(
             modifier = Modifier
@@ -77,7 +98,7 @@ fun HistoricoReportesScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Historial de Reportes",
+                    text = if (uiState.modoCercanos) "Reportes Cercanos (3 km)" else "Historial de Reportes",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -86,6 +107,59 @@ fun HistoricoReportesScreen(
                     text = "${uiState.reportes.size} incidencias registradas en el mapa",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Selector de modo: Todos vs Cercanos (PostGIS /api/v1/reports/nearby)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilterChip(
+                selected = !uiState.modoCercanos,
+                onClick = { viewModel.mostrarTodos() },
+                label = { Text("Todos") }
+            )
+            FilterChip(
+                selected = uiState.modoCercanos,
+                onClick = {
+                    if (LocationHelper.tienePermisoUbicacion(context)) {
+                        coroutineScope.launch {
+                            val (lat, lng) = LocationHelper.obtenerCoordenadas(context)
+                            viewModel.cargarReportesCercanos(lat, lng, radiusKm = 3.0)
+                        }
+                    } else {
+                        nearbyLocationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.MyLocation,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                },
+                label = { Text("Cercanos (3 km)") }
+            )
+        }
+
+        uiState.mensajeError?.let { error ->
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(10.dp)
                 )
             }
         }

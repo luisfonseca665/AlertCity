@@ -2,9 +2,11 @@ package com.example.alertcity.data.repository
 
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
+import com.example.alertcity.domain.repository.DashboardResumen
 import com.example.alertcity.domain.repository.ReporteRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 
 class FakeReporteRepository : ReporteRepository {
@@ -20,6 +22,8 @@ class FakeReporteRepository : ReporteRepository {
 
     override fun getAllReports(): Flow<List<Reporte>> = reportesEnMemoria
 
+    override fun observePendingSyncCount(): Flow<Int> = flowOf(0)
+
     override suspend fun saveReport(
         report: Reporte,
         latitud: Double?,
@@ -29,7 +33,53 @@ class FakeReporteRepository : ReporteRepository {
         return Result.success(report)
     }
 
+    override suspend fun syncPendingReports(): Result<Int> = Result.success(0)
+
     override suspend fun refreshReports(): Result<Unit> {
         return Result.success(Unit)
+    }
+
+    override suspend fun refreshDashboard(): Result<DashboardResumen> {
+        val all = reportesEnMemoria.value
+        return Result.success(
+            DashboardResumen(
+                myActiveReportsCount = all.count { it.estado != EstadoReporte.RESUELTO },
+                mySolvedReportsCount = all.count { it.estado == EstadoReporte.RESUELTO },
+                myReports = all,
+                allReports = all
+            )
+        )
+    }
+
+    override suspend fun getFilteredReports(
+        category: String?,
+        state: String?,
+        urgent: Boolean?,
+        fromDate: String?,
+        toDate: String?
+    ): Result<List<Reporte>> = Result.success(reportesEnMemoria.value)
+
+    override suspend fun getNearbyReports(
+        lat: Double,
+        lng: Double,
+        radiusKm: Double
+    ): Result<List<Reporte>> = Result.success(reportesEnMemoria.value)
+
+    override suspend fun updateReportState(
+        reportId: String,
+        newState: EstadoReporte
+    ): Result<Reporte> {
+        var updatedReport: Reporte? = null
+        reportesEnMemoria.update { list ->
+            list.map {
+                if (it.idReporte == reportId) {
+                    it.copy(estado = newState).also { u -> updatedReport = u }
+                } else {
+                    it
+                }
+            }
+        }
+        return updatedReport?.let { Result.success(it) }
+            ?: Result.failure(Exception("Reporte no encontrado"))
     }
 }

@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
+import com.example.alertcity.domain.model.SyncStatus
 
 @Entity(tableName = "reportes")
 data class ReporteEntity(
@@ -19,7 +20,12 @@ data class ReporteEntity(
     @ColumnInfo(name = "fechaCreacion", defaultValue = "0") val fechaCreacion: Long = 0L,
     @ColumnInfo(name = "fotoUri") val fotoUri: String?,
     @ColumnInfo(name = "ubicacion") val ubicacion: String?,
-    @ColumnInfo(name = "estado") val estado: EstadoReporte
+    @ColumnInfo(name = "estado") val estado: EstadoReporte,
+    @ColumnInfo(name = "latitud") val latitud: Double? = null,
+    @ColumnInfo(name = "longitud") val longitud: Double? = null,
+    @ColumnInfo(name = "syncStatus", defaultValue = "'SYNCED'") val syncStatus: SyncStatus = SyncStatus.SYNCED,
+    @ColumnInfo(name = "localFotoUri") val localFotoUri: String? = null,
+    @ColumnInfo(name = "syncError") val syncError: String? = null
 )
 
 fun ReporteEntity.toDomain(): Reporte = Reporte(
@@ -31,9 +37,14 @@ fun ReporteEntity.toDomain(): Reporte = Reporte(
     esUrgente = esUrgente,
     hora = hora,
     fechaCreacion = fechaCreacion,
-    fotoUri = fotoUri,
+    fotoUri = fotoUri ?: localFotoUri,
     ubicacion = ubicacion,
-    estado = estado
+    estado = estado,
+    latitud = latitud,
+    longitud = longitud,
+    syncStatus = syncStatus,
+    localFotoUri = localFotoUri,
+    syncError = syncError
 )
 
 fun Reporte.toEntity(): ReporteEntity = ReporteEntity(
@@ -47,5 +58,10 @@ fun Reporte.toEntity(): ReporteEntity = ReporteEntity(
     fechaCreacion = fechaCreacion,
     fotoUri = fotoUri,
     ubicacion = ubicacion,
-    estado = estado
+    estado = estado,
+    latitud = latitud,
+    longitud = longitud,
+    syncStatus = syncStatus,
+    localFotoUri = localFotoUri,
+    syncError = syncError
 )

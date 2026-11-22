@@ -33,7 +33,11 @@ data class HistoricoReportesUiState(
     val latitudCentro: Double = LATITUD_CIUDAD_DEFECTO,
     val longitudCentro: Double = LONGITUD_CIUDAD_DEFECTO,
     val zoomMapa: Double = 15.0,
-    val enfocarTrigger: Int = 0
+    val enfocarTrigger: Int = 0,
+    val modoCercanos: Boolean = false,
+    val radioKm: Double = 3.0,
+    val cargando: Boolean = false,
+    val mensajeError: String? = null
 )
 
 class HistoricoReportesViewModel(
@@ -43,29 +47,82 @@ class HistoricoReportesViewModel(
     private val _uiState = MutableStateFlow(HistoricoReportesUiState())
     val uiState: StateFlow<HistoricoReportesUiState> = _uiState.asStateFlow()
 
+    private var todosLosReportes: List<Reporte> = emptyList()
+
     init {
         viewModelScope.launch {
             repository.refreshReports()
         }
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
-                val marcadoresCalculados = construirMarcadores(lista)
-                _uiState.update { actual ->
-                    val primerMarcador = marcadoresCalculados.firstOrNull()
-                    val mantenerCentro = actual.enfocarTrigger > 0 && actual.marcadores.isNotEmpty()
-                    val seleccionadoActualizado = actual.reporteSeleccionado?.let { sel ->
-                        lista.find { it.idReporte == sel.idReporte }
-                    }
-                    actual.copy(
-                        reportes = lista,
-                        marcadores = marcadoresCalculados,
-                        reporteSeleccionado = seleccionadoActualizado,
-                        latitudCentro = if (mantenerCentro) actual.latitudCentro else (primerMarcador?.latitud ?: LATITUD_CIUDAD_DEFECTO),
-                        longitudCentro = if (mantenerCentro) actual.longitudCentro else (primerMarcador?.longitud ?: LONGITUD_CIUDAD_DEFECTO),
-                        enfocarTrigger = if (!mantenerCentro && primerMarcador != null) actual.enfocarTrigger + 1 else actual.enfocarTrigger
-                    )
+                todosLosReportes = lista
+                if (!_uiState.value.modoCercanos) {
+                    actualizarListaYMarcadores(lista)
                 }
             }
+        }
+    }
+
+    fun cargarReportesCercanos(latitud: Double, longitud: Double, radiusKm: Double = 3.0) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    cargando = true,
+                    mensajeError = null,
+                    modoCercanos = true,
+                    radioKm = radiusKm
+                )
+            }
+            val result = repository.getNearbyReports(lat = latitud, lng = longitud, radiusKm = radiusKm)
+            result.fold(
+                onSuccess = { cercanos ->
+                    val marcadoresCalculados = construirMarcadores(cercanos)
+                    _uiState.update { actual ->
+                        actual.copy(
+                            cargando = false,
+                            reportes = cercanos,
+                            marcadores = marcadoresCalculados,
+                            reporteSeleccionado = null,
+                            latitudCentro = latitud,
+                            longitudCentro = longitud,
+                            zoomMapa = 14.5,
+                            enfocarTrigger = actual.enfocarTrigger + 1
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { actual ->
+                        actual.copy(
+                            cargando = false,
+                            mensajeError = error.localizedMessage ?: "No se pudieron cargar reportes cercanos"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun mostrarTodos() {
+        _uiState.update { it.copy(modoCercanos = false, mensajeError = null) }
+        actualizarListaYMarcadores(todosLosReportes)
+    }
+
+    private fun actualizarListaYMarcadores(lista: List<Reporte>) {
+        val marcadoresCalculados = construirMarcadores(lista)
+        _uiState.update { actual ->
+            val primerMarcador = marcadoresCalculados.firstOrNull()
+            val mantenerCentro = actual.enfocarTrigger > 0 && actual.marcadores.isNotEmpty()
+            val seleccionadoActualizado = actual.reporteSeleccionado?.let { sel ->
+                lista.find { it.idReporte == sel.idReporte }
+            }
+            actual.copy(
+                reportes = lista,
+                marcadores = marcadoresCalculados,
+                reporteSeleccionado = seleccionadoActualizado,
+                latitudCentro = if (mantenerCentro) actual.latitudCentro else (primerMarcador?.latitud ?: LATITUD_CIUDAD_DEFECTO),
+                longitudCentro = if (mantenerCentro) actual.longitudCentro else (primerMarcador?.longitud ?: LONGITUD_CIUDAD_DEFECTO),
+                enfocarTrigger = if (!mantenerCentro && primerMarcador != null) actual.enfocarTrigger + 1 else actual.enfocarTrigger
+            )
         }
     }
 
@@ -111,7 +168,6 @@ class HistoricoReportesViewModel(
             val indiceRepetido = conteoPorCoordenada.getOrDefault(clave, 0)
             conteoPorCoordenada[clave] = indiceRepetido + 1
 
-            // Si varios reportes comparten la misma coordenada, se separan ligeramente en círculo para ver todos los pines
             val desplazamiento = if (indiceRepetido == 0) {
                 0.0 to 0.0
             } else {

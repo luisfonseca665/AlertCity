@@ -8,6 +8,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alertcity.ui.navigation.AppNavGraph
 import com.example.alertcity.ui.theme.AlertCityTheme
+import com.example.alertcity.ui.viewmodel.AuthViewModel
 import com.example.alertcity.ui.viewmodel.ReporteViewModel
 
 class MainActivity : ComponentActivity() {
@@ -17,8 +18,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AlertCityTheme {
+                val authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory)
                 val viewModel: ReporteViewModel = viewModel(factory = ReporteViewModel.Factory)
-                AppNavGraph(viewModel = viewModel)
+                AppNavGraph(
+                    authViewModel = authViewModel,
+                    viewModel = viewModel
+                )
             }
         }
     }

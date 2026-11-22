@@ -16,7 +16,12 @@ data class Reporte(
     val fechaCreacion: Long = System.currentTimeMillis(),
     val fotoUri: String? = null,
     val ubicacion: String? = null,
-    val estado: EstadoReporte = EstadoReporte.ENVIADO
+    val estado: EstadoReporte = EstadoReporte.ENVIADO,
+    val latitud: Double? = null,
+    val longitud: Double? = null,
+    val syncStatus: SyncStatus = SyncStatus.SYNCED,
+    val localFotoUri: String? = null,
+    val syncError: String? = null
 ) {
     val fechaFormateada: String
         get() = if (fechaCreacion > 0L) {

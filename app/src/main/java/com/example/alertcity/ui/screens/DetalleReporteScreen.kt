@@ -9,12 +9,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +35,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
+import com.example.alertcity.domain.model.SyncStatus
 import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
 import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
 import com.example.alertcity.ui.components.aplicarEstiloModerno
@@ -44,9 +51,33 @@ import org.osmdroid.views.overlay.Marker
 @Composable
 fun DetalleReporteScreen(
     reporte: Reporte?,
+    puedeCambiarEstado: Boolean = false,
+    actualizandoEstado: Boolean = false,
+    sincronizando: Boolean = false,
+    mensajeAccion: String? = null,
+    onLimpiarMensaje: () -> Unit = {},
+    onCambiarEstado: (EstadoReporte) -> Unit = {},
+    onReintentarSincronizacion: () -> Unit = {},
     onBack: () -> Unit
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    var estuvoCargado by remember { mutableStateOf(false) }
+
+    LaunchedEffect(reporte) {
+        if (reporte != null) {
+            estuvoCargado = true
+        }
+    }
+
+    LaunchedEffect(mensajeAccion) {
+        if (!mensajeAccion.isNullOrBlank()) {
+            snackbarHostState.showSnackbar(mensajeAccion)
+            onLimpiarMensaje()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Detalle del Reporte") },
@@ -60,7 +91,23 @@ fun DetalleReporteScreen(
     ) { padding ->
         if (reporte == null) {
             Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Reporte no encontrado")
+                if (estuvoCargado) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Text(
+                            text = "Reporte sincronizado con el servidor.",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = onBack) {
+                            Text("Volver al listado")
+                        }
+                    }
+                } else {
+                    Text("Reporte no encontrado")
+                }
             }
             return@Scaffold
         }
@@ -73,6 +120,64 @@ fun DetalleReporteScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(text = reporte.titulo, style = MaterialTheme.typography.headlineMedium)
+
+            if (reporte.syncStatus != SyncStatus.SYNCED) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    color = if (reporte.syncStatus == SyncStatus.SYNC_ERROR) {
+                        MaterialTheme.colorScheme.errorContainer
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (reporte.syncStatus == SyncStatus.SYNC_ERROR) {
+                                    Icons.Default.ErrorOutline
+                                } else {
+                                    Icons.Default.CloudQueue
+                                },
+                                contentDescription = null,
+                                tint = if (reporte.syncStatus == SyncStatus.SYNC_ERROR) {
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                },
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = reporte.syncStatus.etiqueta,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (reporte.syncStatus == SyncStatus.SYNC_ERROR) {
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                }
+                            )
+                        }
+                        if (!reporte.syncError.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = reporte.syncError,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onReintentarSincronizacion,
+                            enabled = !sincronizando
+                        ) {
+                            Text(if (sincronizando) "Sincronizando..." else "Reintentar sincronización")
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = "Estatus: ${reporte.estado.etiqueta}", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
@@ -85,6 +190,41 @@ fun DetalleReporteScreen(
                 color = if (reporte.estado == EstadoReporte.RESUELTO) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
+
+            // Control de roles (RBAC): Solo ADMIN u operadores departamentales pueden cambiar el estado
+            if (puedeCambiarEstado && reporte.syncStatus == SyncStatus.SYNCED) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "Actualizar estado (Operador)",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val estadosPermitidos = listOf(
+                        EstadoReporte.ENVIADO,
+                        EstadoReporte.EN_PROCESO,
+                        EstadoReporte.RESUELTO
+                    )
+                    estadosPermitidos.forEach { estadoOpcion ->
+                        val seleccionado = reporte.estado == estadoOpcion
+                        FilterChip(
+                            selected = seleccionado,
+                            enabled = !actualizandoEstado && !seleccionado,
+                            onClick = { onCambiarEstado(estadoOpcion) },
+                            label = { Text(estadoOpcion.etiqueta) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                if (actualizandoEstado) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

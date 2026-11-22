@@ -1,10 +1,12 @@
 package com.example.alertcity.data.mapper
 
 import com.example.alertcity.data.local.entity.ReporteEntity
+import com.example.alertcity.data.remote.NetworkConstants
 import com.example.alertcity.data.remote.model.CreateReportRequest
 import com.example.alertcity.data.remote.model.ReportResponse
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
+import com.example.alertcity.domain.model.SyncStatus
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -46,6 +48,14 @@ object ReporteMapper {
             "EN_PROCESO" -> EstadoReporte.EN_PROCESO
             "REVISION" -> EstadoReporte.REVISION
             else -> EstadoReporte.ENVIADO
+        }
+    }
+
+    fun mapDomainStateToBackendEnum(estado: EstadoReporte): String {
+        return when (estado) {
+            EstadoReporte.ENVIADO -> "ENVIADO"
+            EstadoReporte.REVISION, EstadoReporte.EN_PROCESO -> "EN_PROCESO"
+            EstadoReporte.RESUELTO -> "RESUELTO"
         }
     }
 
@@ -102,9 +112,12 @@ object ReporteMapper {
             esUrgente = response.urgent,
             hora = hora,
             fechaCreacion = timestamp,
-            fotoUri = null,
+            fotoUri = NetworkConstants.resolveMediaUrl(response.imageUrl),
             ubicacion = formatCoordinatesToLocationString(response.latitude, response.longitude, response.addressReference),
-            estado = mapBackendStateToDomain(response.state)
+            estado = mapBackendStateToDomain(response.state),
+            latitud = response.latitude,
+            longitud = response.longitude,
+            syncStatus = SyncStatus.SYNCED
         )
     }
 
@@ -121,12 +134,17 @@ object ReporteMapper {
             fechaCreacion = domain.fechaCreacion,
             fotoUri = domain.fotoUri,
             ubicacion = domain.ubicacion,
-            estado = domain.estado
+            estado = domain.estado,
+            latitud = domain.latitud,
+            longitud = domain.longitud,
+            syncStatus = domain.syncStatus,
+            localFotoUri = domain.localFotoUri,
+            syncError = domain.syncError
         )
     }
 
     fun toCreateRequest(
-        userId: String,
+        userId: String? = null,
         titulo: String,
         descripcion: String,
         categoria: String,
@@ -143,8 +161,7 @@ object ReporteMapper {
             urgent = esUrgente,
             latitude = latitud,
             longitude = longitud,
-            addressReference = referencia,
-            state = "ENVIADO"
+            addressReference = referencia
         )
     }
 }

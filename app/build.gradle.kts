@@ -71,5 +71,14 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.google.gson)
 
+    // WorkManager (sincronización en segundo plano)
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // Geolocalización (FusedLocationProviderClient)
+    implementation(libs.play.services.location)
+
+    // Lectura de orientación EXIF para compresión de fotos
+    implementation(libs.androidx.exifinterface)
+
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 }
