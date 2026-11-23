@@ -18,14 +18,12 @@ import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 
-const val LATITUD_CIUDAD_DEFECTO = 20.1387
-const val LONGITUD_CIUDAD_DEFECTO = -101.1895
-
 const val COLOR_PIN_RESUELTO = "#2E7D32"
 const val COLOR_PIN_URGENTE = "#D32F2F"
 const val COLOR_PIN_ACTIVO = "#1565C0"
 
-private val REGEX_NUMERO_COORD = Regex("[-+]?\\d+(?:\\.\\d+)?")
+@Volatile
+private var osmdroidConfigurado = false
 private val cacheBitmapsPin = mutableMapOf<String, Bitmap>()
 
 val TEMA_MAPA = XYTileSource(
@@ -42,12 +40,18 @@ val TEMA_MAPA = XYTileSource(
 )
 
 fun configurarOsmdroid(context: Context) {
-    val baseDir = File(context.cacheDir, "alertcity_osm").apply { mkdirs() }
-    val tileCacheDir = File(baseDir, "tiles_clean").apply { mkdirs() }
-    Configuration.getInstance().apply {
-        osmdroidBasePath = baseDir
-        osmdroidTileCache = tileCacheDir
-        userAgentValue = "AlertCityApp/1.0 (https://github.com/alertcity; contacto@alertcity.mx)"
+    if (osmdroidConfigurado) return
+    synchronized(TEMA_MAPA) {
+        if (osmdroidConfigurado) return
+        val appContext = context.applicationContext ?: context
+        val baseDir = File(appContext.cacheDir, "alertcity_osm").apply { mkdirs() }
+        val tileCacheDir = File(baseDir, "tiles_clean").apply { mkdirs() }
+        Configuration.getInstance().apply {
+            osmdroidBasePath = baseDir
+            osmdroidTileCache = tileCacheDir
+            userAgentValue = "AlertCityApp/1.0 (https://github.com/alertcity; contacto@alertcity.mx)"
+        }
+        osmdroidConfigurado = true
     }
 }
 
@@ -101,22 +105,3 @@ fun colorHexPin(
 
 fun colorHexPorReporte(reporte: Reporte): String =
     colorHexPin(estado = reporte.estado, esUrgente = reporte.esUrgente)
-
-fun parsearCoordenadasUbicacion(ubicacion: String?): Pair<Double, Double>? {
-    if (ubicacion.isNullOrBlank()) return null
-    val partes = ubicacion.split(",")
-    if (partes.size < 2) return null
-
-    val latRaw = REGEX_NUMERO_COORD.find(partes[0])?.value?.toDoubleOrNull() ?: return null
-    val lonRaw = REGEX_NUMERO_COORD.find(partes[1])?.value?.toDoubleOrNull() ?: return null
-
-    val latitud = if (latRaw > 0 && partes[0].contains("S", ignoreCase = true)) -latRaw else latRaw
-    val longitud = if (lonRaw > 0 && (partes[1].contains("W", ignoreCase = true) || partes[1].contains("O", ignoreCase = true))) {
-        -lonRaw
-    } else {
-        lonRaw
-    }
-
-    if (latitud !in -90.0..90.0 || longitud !in -180.0..180.0) return null
-    return latitud to longitud
-}

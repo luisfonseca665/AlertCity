@@ -36,13 +36,13 @@ import coil.compose.AsyncImage
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.model.SyncStatus
-import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
 import com.example.alertcity.ui.components.aplicarEstiloModerno
 import com.example.alertcity.ui.components.colorHexPorReporte
 import com.example.alertcity.ui.components.configurarOsmdroid
 import com.example.alertcity.ui.components.crearPinMapa
-import com.example.alertcity.ui.components.parsearCoordenadasUbicacion
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker

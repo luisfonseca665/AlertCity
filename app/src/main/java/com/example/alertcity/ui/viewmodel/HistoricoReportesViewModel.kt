@@ -8,11 +8,12 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.alertcity.AlertCityApp
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
-import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.parsearCoordenadasUbicacion
+import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,9 +51,7 @@ class HistoricoReportesViewModel(
     private var todosLosReportes: List<Reporte> = emptyList()
 
     init {
-        viewModelScope.launch {
-            repository.refreshReports()
-        }
+        refrescar()
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 todosLosReportes = lista
@@ -123,6 +122,15 @@ class HistoricoReportesViewModel(
                 longitudCentro = if (mantenerCentro) actual.longitudCentro else (primerMarcador?.longitud ?: LONGITUD_CIUDAD_DEFECTO),
                 enfocarTrigger = if (!mantenerCentro && primerMarcador != null) actual.enfocarTrigger + 1 else actual.enfocarTrigger
             )
+        }
+    }
+
+    fun refrescar() {
+        if (_uiState.value.cargando) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(cargando = true) }
+            repository.refreshReports()
+            _uiState.update { it.copy(cargando = false) }
         }
     }
 

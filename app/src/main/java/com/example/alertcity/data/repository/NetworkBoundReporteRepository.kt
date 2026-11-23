@@ -20,7 +20,7 @@ import com.example.alertcity.domain.model.SyncStatus
 import com.example.alertcity.domain.repository.DashboardResumen
 import com.example.alertcity.domain.repository.ReporteRepository
 import com.example.alertcity.domain.util.GeoUtils
-import com.example.alertcity.ui.components.parsearCoordenadasUbicacion
+import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex

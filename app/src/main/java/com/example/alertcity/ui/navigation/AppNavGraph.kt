@@ -9,7 +9,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.*
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -81,9 +86,24 @@ fun AppNavGraph(
 
     val navController = rememberNavController()
     val puedeCambiarEstado = session?.puedeCambiarEstadoReportes == true
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
-        bottomBar = { MenuNavegacionInferior(navController) }
+        bottomBar = { MenuNavegacionInferior(navController) },
+        floatingActionButton = {
+            if (currentRoute == "inicio") {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        navController.navigate("crear") {
+                            launchSingleTop = true
+                        }
+                    },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Nuevo reporte") },
+                    text = { Text("Reportar") }
+                )
+            }
+        }
     ) { padding ->
         NavHost(
             navController = navController,
@@ -147,11 +167,10 @@ fun AppNavGraph(
                 HistoricoReportesScreen(
                     viewModel = historicoViewModel,
                     onReporteClick = { id ->
-                        navController.navigate("detalle_historico/$id")
+                        navController.navigate("detalle/$id")
                     }
                 )
             }
-
             composable(
                 route = "detalle_historico/{reporteId}",
                 arguments = listOf(navArgument("reporteId") { type = NavType.StringType })
@@ -190,11 +209,13 @@ fun MenuNavegacionInferior(navController: NavHostController) {
     NavigationBar {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
+        val previousRoute = navController.previousBackStackEntry?.destination?.route
+        val enDetalle = currentRoute?.startsWith("detalle/") == true
 
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
             label = { Text("Inicio") },
-            selected = currentRoute == "inicio" || currentRoute?.startsWith("detalle/") == true,
+            selected = currentRoute == "inicio" || (enDetalle && previousRoute != "historico"),
             onClick = {
                 navController.navigate("inicio") {
                     popUpTo(navController.graph.startDestinationId)
@@ -203,20 +224,9 @@ fun MenuNavegacionInferior(navController: NavHostController) {
             }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Add, contentDescription = "Reportar") },
-            label = { Text("Reportar") },
-            selected = currentRoute == "crear",
-            onClick = {
-                navController.navigate("crear") {
-                    popUpTo(navController.graph.startDestinationId)
-                    launchSingleTop = true
-                }
-            }
-        )
-        NavigationBarItem(
             icon = { Icon(Icons.Default.History, contentDescription = "Histórico") },
             label = { Text("Histórico") },
-            selected = currentRoute == "historico" || currentRoute?.startsWith("detalle_historico") == true,
+            selected = currentRoute == "historico" || (enDetalle && previousRoute == "historico"),
             onClick = {
                 navController.navigate("historico") {
                     popUpTo(navController.graph.startDestinationId)

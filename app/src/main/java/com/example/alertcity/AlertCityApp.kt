@@ -10,6 +10,8 @@ import com.example.alertcity.data.repository.AuthRepository
 import com.example.alertcity.data.repository.NetworkBoundReporteRepository
 import com.example.alertcity.data.worker.SyncScheduler
 import com.example.alertcity.domain.repository.ReporteRepository
+import com.example.alertcity.ui.components.configurarOsmdroid
+import com.example.alertcity.ui.components.configurarOsmdroid
 
 class AlertCityApp : Application() {
 
@@ -38,6 +40,7 @@ class AlertCityApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        configurarOsmdroid(this)
         NetworkConstants.init(applicationContext)
         ApiClient.init(sessionManager)
         networkMonitor

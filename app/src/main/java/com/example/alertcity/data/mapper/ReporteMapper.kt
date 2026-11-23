@@ -7,10 +7,10 @@ import com.example.alertcity.data.remote.model.ReportResponse
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.model.SyncStatus
+import com.example.alertcity.domain.util.formatearCoordenadas
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.abs
 
 object ReporteMapper {
 
@@ -89,9 +89,7 @@ object ReporteMapper {
 
     fun formatCoordinatesToLocationString(lat: Double?, lon: Double?, addressRef: String?): String? {
         if (lat != null && lon != null) {
-            val ns = if (lat >= 0.0) "N" else "S"
-            val ew = if (lon >= 0.0) "E" else "W"
-            val coordsStr = String.format(Locale.US, "%.4f° %s, %.4f° %s", abs(lat), ns, abs(lon), ew)
+            val coordsStr = formatearCoordenadas(lat, lon)
             return if (!addressRef.isNullOrBlank()) {
                 "$coordsStr ($addressRef)"
             } else {

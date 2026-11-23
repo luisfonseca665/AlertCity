@@ -7,8 +7,8 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
-import com.example.alertcity.ui.components.LATITUD_CIUDAD_DEFECTO
-import com.example.alertcity.ui.components.LONGITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
+import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority

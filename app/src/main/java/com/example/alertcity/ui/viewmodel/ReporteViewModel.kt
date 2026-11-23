@@ -10,6 +10,7 @@ import com.example.alertcity.data.remote.NetworkMonitor
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,6 +86,7 @@ class ReporteViewModel(
     }
 
     fun refrescar() {
+        if (_uiState.value.cargando) return
         viewModelScope.launch {
             _uiState.update { it.copy(cargando = true, mensajeError = null) }
             val resultado = repository.refreshDashboard()
