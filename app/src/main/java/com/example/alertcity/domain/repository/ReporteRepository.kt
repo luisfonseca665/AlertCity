@@ -46,4 +46,8 @@ interface ReporteRepository {
         reportId: String,
         newState: EstadoReporte
     ): Result<Reporte>
+
+    suspend fun updateReport(report: Reporte): Result<Unit>
+
+    suspend fun deleteReport(idReporte: String): Result<Unit>
 }

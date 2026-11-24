@@ -9,6 +9,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.alertcity.data.local.converter.ReporteConverters
 import com.example.alertcity.data.local.dao.ReporteDao
+import com.example.alertcity.data.local.dao.UsuarioDao
 import com.example.alertcity.data.local.entity.ReporteEntity
 import com.example.alertcity.data.local.entity.UsuarioEntity
 
@@ -20,6 +21,7 @@ import com.example.alertcity.data.local.entity.UsuarioEntity
 @TypeConverters(ReporteConverters::class)
 abstract class AlertCityDatabase : RoomDatabase() {
     abstract fun reporteDao(): ReporteDao
+    abstract fun usuarioDao(): UsuarioDao
 
     companion object {
         @Volatile

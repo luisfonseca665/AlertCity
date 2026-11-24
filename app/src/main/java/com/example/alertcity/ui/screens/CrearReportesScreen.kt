@@ -1,24 +1,55 @@
 package com.example.alertcity.ui.screens
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
-import android.view.MotionEvent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,34 +57,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
+import com.example.alertcity.R
 import com.example.alertcity.data.location.LocationHelper
 import com.example.alertcity.data.media.ImageCompressor
-import com.example.alertcity.ui.components.aplicarEstiloModerno
+import com.example.alertcity.ui.components.ImagenPreviewDialog
+import com.example.alertcity.ui.components.MapaPreviewDialog
+import com.example.alertcity.ui.components.OsmMapCard
+import com.example.alertcity.ui.components.PinMapaUi
 import com.example.alertcity.ui.components.colorHexPin
-import com.example.alertcity.ui.components.configurarOsmdroid
-import com.example.alertcity.ui.components.crearPinMapa
+import com.example.alertcity.ui.components.esPantallaGrande
 import com.example.alertcity.ui.viewmodel.CrearReporteUiState
 import com.example.alertcity.ui.viewmodel.CrearReporteViewModel
 import java.io.File
 import kotlinx.coroutines.launch
-import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.MapEventsOverlay
-import org.osmdroid.views.overlay.Marker
 
-fun crearUriTemporal(context: Context): Uri {
+private fun crearUriTemporal(context: Context): Uri {
     val directorio = File(context.cacheDir, "images").apply { if (!exists()) mkdirs() }
     val archivo = File(directorio, "evidencia_${System.currentTimeMillis()}.jpg").apply { createNewFile() }
 
@@ -68,11 +95,13 @@ fun crearUriTemporal(context: Context): Uri {
 @Composable
 fun CrearReportesScreen(
     viewModel: CrearReporteViewModel,
+    onBack: () -> Unit = {},
     onReporteGuardado: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val pantallaGrande = esPantallaGrande()
 
     LaunchedEffect(Unit) {
         viewModel.sincronizarHoraActualSiNoEsPersonalizada()
@@ -111,185 +140,122 @@ fun CrearReportesScreen(
         }
     }
 
+    val onSolicitarUbicacionGps = {
+        if (LocationHelper.tienePermisoUbicacion(context)) {
+            coroutineScope.launch {
+                val coordenadas = LocationHelper.obtenerCoordenadas(context)
+                viewModel.onUbicacionGpsObtenida(coordenadas.first, coordenadas.second)
+            }
+        } else {
+            locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    val pinesSeleccion = remember(uiState.latitudSeleccionada, uiState.longitudSeleccionada, uiState.urgente) {
+        if (uiState.latitudSeleccionada != null && uiState.longitudSeleccionada != null) {
+            listOf(
+                PinMapaUi(
+                    id = "seleccion_actual",
+                    latitud = uiState.latitudSeleccionada!!,
+                    longitud = uiState.longitudSeleccionada!!,
+                    colorHex = colorHexPin(esUrgente = uiState.urgente),
+                    titulo = "Ubicación del reporte"
+                )
+            )
+        } else {
+            emptyList()
+        }
+    }
+
     Column(
         modifier = Modifier
-            .padding(16.dp)
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(text = "Nuevo Reporte", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(10.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = uiState.titulo,
-            onValueChange = { viewModel.onTituloChange(it) },
-            label = { Text("Incidencia") },
-            placeholder = { Text("Ej. Lámpara rota en parque central") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = uiState.descripcion,
-            onValueChange = { viewModel.onDescripcionChange(it) },
-            label = { Text("Descripción") },
-            placeholder = { Text("Detalla lo que ocurre...") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Selector de Categoría (Dropdown)
-        ExposedDropdownMenuBox(
-            expanded = uiState.categoriaExpandida,
-            onExpandedChange = { viewModel.onCategoriaExpandidaChange(it) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = uiState.categoria,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Categoría del problema") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = uiState.categoriaExpandida) },
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-            )
-            ExposedDropdownMenu(
-                expanded = uiState.categoriaExpandida,
-                onDismissRequest = { viewModel.onCategoriaExpandidaChange(false) }
-            ) {
-                uiState.categorias.forEach { cat ->
-                    DropdownMenuItem(
-                        text = { Text(cat) },
-                        onClick = { viewModel.onCategoriaChange(cat) }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Selección de hora (por defecto la actual)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(
-                onClick = { viewModel.onMostrarTimePickerChange(true) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.Default.Schedule,
-                    contentDescription = "Hora",
-                    modifier = Modifier.padding(end = 8.dp)
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(id = R.string.action_back)
                 )
-                Text("Hora del incidente: ${uiState.horaFormateada}")
             }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = uiState.urgente,
-                onCheckedChange = { viewModel.onUrgenteChange(it) }
-            )
-            Text("Marcar como urgente", style = MaterialTheme.typography.bodyMedium)
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Botones de acción: Evidencia y GPS
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = { viewModel.onMostrarOpcionesFotoChange(true) },
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.CameraAlt, contentDescription = "Foto", modifier = Modifier.padding(end = 4.dp))
-                Text(if (uiState.fotoUri != null) "Cambiar Foto" else "Evidencia")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    if (LocationHelper.tienePermisoUbicacion(context)) {
-                        coroutineScope.launch {
-                            val coordenadas = LocationHelper.obtenerCoordenadas(context)
-                            viewModel.onUbicacionGpsObtenida(coordenadas.first, coordenadas.second)
-                        }
-                    } else {
-                        locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.LocationOn, contentDescription = "Ubicación", modifier = Modifier.padding(end = 4.dp))
-                Text(if (uiState.ubicacion != null) "Cambiar Ubicación" else "Ubicación")
-            }
-        }
-
-        // Previsualización de foto si existe
-        uiState.fotoUri?.let { fotoActual ->
-            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Evidencia fotográfica",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            AsyncImage(
-                model = fotoActual,
-                contentDescription = "Evidencia Capturada",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                text = stringResource(id = R.string.create_report_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Mapa interactivo para seleccionar o confirmar ubicación
-        Text(
-            text = "Ubicación del incidente",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = uiState.ubicacion?.let { "Seleccionada: $it (puedes tocar otro punto en el mapa)" }
-                ?: "Toca el punto en el mapa o usa el botón 'Ubicación'",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        MapaSeleccionUbicacionCard(
-            uiState = uiState,
-            onPuntoSeleccionado = { lat, lon -> viewModel.onMapaClick(lat, lon) }
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = { viewModel.guardarReporte(onReporteGuardado) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = uiState.formularioValido
-        ) {
-            Text(
-                text = if (uiState.guardando) "Guardando..." else "Guardar Reporte",
-                style = MaterialTheme.typography.titleMedium
+        if (pantallaGrande) {
+            // Diseño adaptativo de 2 paneles lado a lado para pantallas grandes / tablets
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    FormularioDatosReporte(
+                        uiState = uiState,
+                        viewModel = viewModel,
+                        onSolicitarUbicacionGps = { onSolicitarUbicacionGps() }
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    SeccionEvidenciaYMapaReporte(
+                        uiState = uiState,
+                        pinesSeleccion = pinesSeleccion,
+                        viewModel = viewModel,
+                        onGuardar = { viewModel.guardarReporte(onReporteGuardado) }
+                    )
+                }
+            }
+        } else {
+            // Diseño compacto vertical para teléfonos
+            FormularioDatosReporte(
+                uiState = uiState,
+                viewModel = viewModel,
+                onSolicitarUbicacionGps = { onSolicitarUbicacionGps() }
+            )
+            SeccionEvidenciaYMapaReporte(
+                uiState = uiState,
+                pinesSeleccion = pinesSeleccion,
+                viewModel = viewModel,
+                onGuardar = { viewModel.guardarReporte(onReporteGuardado) }
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+
+    if (uiState.mostrarPreviewImagen && uiState.fotoUri != null) {
+        ImagenPreviewDialog(
+            imagenUri = uiState.fotoUri!!,
+            titulo = uiState.titulo.ifBlank { stringResource(id = R.string.create_photo_section) },
+            onDismiss = { viewModel.onMostrarPreviewImagenChange(false) }
+        )
+    }
+
+    if (uiState.mostrarPreviewMapa) {
+        MapaPreviewDialog(
+            titulo = stringResource(id = R.string.create_select_location_title),
+            subtitulo = uiState.ubicacion ?: stringResource(id = R.string.create_select_location_subtitle),
+            latitudInicial = uiState.latitudSeleccionada ?: uiState.latitudCamara,
+            longitudInicial = uiState.longitudSeleccionada ?: uiState.longitudCamara,
+            pines = pinesSeleccion,
+            zoomInicial = 16.5,
+            etiquetaInferior = uiState.ubicacion,
+            onMapClick = viewModel::onMapaClick,
+            onDismiss = { viewModel.onMostrarPreviewMapaChange(false) }
+        )
     }
 
     if (uiState.mostrarTimePicker) {
@@ -304,14 +270,14 @@ fun CrearReportesScreen(
                 TextButton(
                     onClick = { viewModel.onConfirmarHora(timeState.hour, timeState.minute) }
                 ) {
-                    Text("OK")
+                    Text(stringResource(id = R.string.action_ok))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { viewModel.onMostrarTimePickerChange(false) }
                 ) {
-                    Text("Cancelar")
+                    Text(stringResource(id = R.string.action_cancel))
                 }
             },
             text = { TimePicker(state = timeState) }
@@ -321,7 +287,7 @@ fun CrearReportesScreen(
     if (uiState.mostrarOpcionesFoto) {
         AlertDialog(
             onDismissRequest = { viewModel.onMostrarOpcionesFotoChange(false) },
-            title = { Text("Adjuntar Evidencia") },
+            title = { Text(stringResource(id = R.string.create_attach_dialog_title)) },
             text = {
                 Column {
                     TextButton(onClick = {
@@ -333,150 +299,306 @@ fun CrearReportesScreen(
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
-                    }) { Text("Tomar Foto con Cámara") }
+                    }) { Text(stringResource(id = R.string.create_take_photo)) }
 
                     TextButton(onClick = {
                         viewModel.onMostrarOpcionesFotoChange(false)
                         galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }) { Text("Elegir de Galería") }
+                    }) { Text(stringResource(id = R.string.create_pick_gallery)) }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.onMostrarOpcionesFotoChange(false) }) { Text("Cancelar") }
+                TextButton(onClick = { viewModel.onMostrarOpcionesFotoChange(false) }) {
+                    Text(stringResource(id = R.string.action_cancel))
+                }
             }
         )
     }
 }
 
-@SuppressLint("ClickableViewAccessibility")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MapaSeleccionUbicacionCard(
+private fun FormularioDatosReporte(
     uiState: CrearReporteUiState,
-    onPuntoSeleccionado: (Double, Double) -> Unit
+    viewModel: CrearReporteViewModel,
+    onSolicitarUbicacionGps: () -> Unit
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    OutlinedTextField(
+        value = uiState.titulo,
+        onValueChange = { viewModel.onTituloChange(it) },
+        label = { Text(stringResource(id = R.string.create_issue_label)) },
+        placeholder = { Text(stringResource(id = R.string.create_issue_placeholder)) },
+        shape = RoundedCornerShape(12.dp),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth()
+    )
 
-    val mapView = remember {
-        configurarOsmdroid(context)
-        MapView(context).apply {
-            aplicarEstiloModerno()
-            controller.setZoom(15.5)
-            controller.setCenter(GeoPoint(uiState.latitudCamara, uiState.longitudCamara))
-            setOnTouchListener { vista, evento ->
-                when (evento.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        vista.parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        vista.parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-                false
-            }
-        }
-    }
+    Spacer(modifier = Modifier.height(10.dp))
 
-    DisposableEffect(lifecycleOwner, mapView) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                else -> Unit
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onDetach()
-        }
-    }
+    OutlinedTextField(
+        value = uiState.descripcion,
+        onValueChange = { viewModel.onDescripcionChange(it) },
+        label = { Text(stringResource(id = R.string.create_desc_label)) },
+        placeholder = { Text(stringResource(id = R.string.create_desc_placeholder)) },
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+        minLines = 3
+    )
 
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp),
-        shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
+    Spacer(modifier = Modifier.height(12.dp))
+
+    ExposedDropdownMenuBox(
+        expanded = uiState.categoriaExpandida,
+        onExpandedChange = { viewModel.onCategoriaExpandidaChange(it) },
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize(),
-                update = { mapa ->
-                    mapa.overlays.clear()
+        OutlinedTextField(
+            value = uiState.categoria,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(id = R.string.create_category_label)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = uiState.categoriaExpandida) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = uiState.categoriaExpandida,
+            onDismissRequest = { viewModel.onCategoriaExpandidaChange(false) }
+        ) {
+            uiState.categorias.forEach { cat ->
+                DropdownMenuItem(
+                    text = { Text(cat) },
+                    onClick = { viewModel.onCategoriaChange(cat) }
+                )
+            }
+        }
+    }
 
-                    val receptorToques = object : MapEventsReceiver {
-                        override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                            if (p != null) {
-                                onPuntoSeleccionado(p.latitude, p.longitude)
-                            }
-                            return true
-                        }
+    Spacer(modifier = Modifier.height(12.dp))
 
-                        override fun longPressHelper(p: GeoPoint?): Boolean {
-                            if (p != null) {
-                                onPuntoSeleccionado(p.latitude, p.longitude)
-                            }
-                            return true
-                        }
-                    }
-                    mapa.overlays.add(MapEventsOverlay(receptorToques))
+    OutlinedButton(
+        onClick = { viewModel.onMostrarTimePickerChange(true) },
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(
+            imageVector = Icons.Default.Schedule,
+            contentDescription = null,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Text(stringResource(id = R.string.create_time_button, uiState.horaFormateada))
+    }
 
-                    val latPin = uiState.latitudSeleccionada
-                    val lonPin = uiState.longitudSeleccionada
-                    if (latPin != null && lonPin != null) {
-                        val colorPin = colorHexPin(esUrgente = uiState.urgente)
-                        val marker = Marker(mapa).apply {
-                            position = GeoPoint(latPin, lonPin)
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            icon = crearPinMapa(context, colorPin)
-                            title = uiState.titulo.ifBlank { "Ubicación del reporte" }
-                        }
-                        mapa.overlays.add(marker)
-                    }
+    Spacer(modifier = Modifier.height(8.dp))
 
-                    val claveCamara = "${uiState.latitudCamara},${uiState.longitudCamara},${uiState.animarMapaTrigger}"
-                    if (uiState.animarMapaTrigger > 0 && mapa.tag != claveCamara) {
-                        mapa.tag = claveCamara
-                        mapa.controller.animateTo(
-                            GeoPoint(uiState.latitudCamara, uiState.longitudCamara),
-                            16.5,
-                            500L
-                        )
-                    }
+    Surface(
+        onClick = { viewModel.onUrgenteChange(!uiState.urgente) },
+        shape = RoundedCornerShape(12.dp),
+        color = if (uiState.urgente) {
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = uiState.urgente,
+                onCheckedChange = { viewModel.onUrgenteChange(it) }
+            )
+            Text(
+                text = stringResource(id = R.string.create_mark_urgent),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (uiState.urgente) FontWeight.SemiBold else FontWeight.Normal
+            )
+        }
+    }
 
-                    mapa.invalidate()
+    Spacer(modifier = Modifier.height(10.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedButton(
+            onClick = { viewModel.onMostrarOpcionesFotoChange(true) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+            Text(
+                if (uiState.fotoUri != null) {
+                    stringResource(id = R.string.create_change_photo)
+                } else {
+                    stringResource(id = R.string.create_add_photo)
                 }
             )
+        }
 
-            if (uiState.ubicacion != null) {
+        OutlinedButton(
+            onClick = onSolicitarUbicacionGps,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+            Text(
+                if (uiState.ubicacion != null) {
+                    stringResource(id = R.string.create_change_location)
+                } else {
+                    stringResource(id = R.string.create_add_location)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SeccionEvidenciaYMapaReporte(
+    uiState: CrearReporteUiState,
+    pinesSeleccion: List<PinMapaUi>,
+    viewModel: CrearReporteViewModel,
+    onGuardar: () -> Unit
+) {
+    uiState.fotoUri?.let { fotoActual ->
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+            text = stringResource(id = R.string.create_photo_section),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        ElevatedCard(
+            onClick = { viewModel.onMostrarPreviewImagenChange(true) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(185.dp)
+            ) {
+                AsyncImage(
+                    model = fotoActual,
+                    contentDescription = stringResource(id = R.string.create_photo_section),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.5f)
+                                )
+                            )
+                        )
+                )
                 Surface(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(8.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    tonalElevation = 4.dp
+                        .align(Alignment.BottomEnd)
+                        .padding(10.dp),
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.LocationOn,
+                            imageVector = Icons.Default.ZoomIn,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = uiState.ubicacion ?: "",
-                            style = MaterialTheme.typography.labelSmall
+                            text = stringResource(id = R.string.create_preview_badge),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
         }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = stringResource(id = R.string.create_location_section),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        TextButton(
+            onClick = { viewModel.onMostrarPreviewMapaChange(true) },
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.OpenInFull,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = stringResource(id = R.string.action_expand_map),
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+    }
+    Text(
+        text = uiState.ubicacion?.let { stringResource(id = R.string.create_location_selected, it) }
+            ?: stringResource(id = R.string.create_location_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    OsmMapCard(
+        latitudCamara = uiState.latitudCamara,
+        longitudCamara = uiState.longitudCamara,
+        pines = pinesSeleccion,
+        zoomInicial = 15.5,
+        zoomCamara = 16.5,
+        animarTrigger = uiState.animarMapaTrigger,
+        etiquetaInferior = uiState.ubicacion,
+        onAmpliarClick = { viewModel.onMostrarPreviewMapaChange(true) },
+        onMapClick = viewModel::onMapaClick
+    )
+
+    Spacer(modifier = Modifier.height(22.dp))
+
+    Button(
+        onClick = onGuardar,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        enabled = uiState.formularioValido
+    ) {
+        Text(
+            text = if (uiState.guardando) {
+                stringResource(id = R.string.create_saving)
+            } else {
+                stringResource(id = R.string.create_save_button)
+            },
+            style = MaterialTheme.typography.titleMedium
+        )
     }
 }

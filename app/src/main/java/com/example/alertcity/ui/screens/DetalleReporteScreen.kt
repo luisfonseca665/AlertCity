@@ -1,8 +1,20 @@
 package com.example.alertcity.ui.screens
 
-import android.annotation.SuppressLint
-import android.view.MotionEvent
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -10,69 +22,72 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
+import com.example.alertcity.R
 import com.example.alertcity.domain.model.EstadoReporte
-import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.model.SyncStatus
-import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
-import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
 import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
-import com.example.alertcity.ui.components.aplicarEstiloModerno
+import com.example.alertcity.ui.components.ImagenPreviewDialog
+import com.example.alertcity.ui.components.MapaPreviewDialog
+import com.example.alertcity.ui.components.OsmMapCard
+import com.example.alertcity.ui.components.PinMapaUi
 import com.example.alertcity.ui.components.colorHexPorReporte
-import com.example.alertcity.ui.components.configurarOsmdroid
-import com.example.alertcity.ui.components.crearPinMapa
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
+import com.example.alertcity.ui.viewmodel.DetalleReporteViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleReporteScreen(
-    reporte: Reporte?,
-    puedeCambiarEstado: Boolean = false,
-    actualizandoEstado: Boolean = false,
-    sincronizando: Boolean = false,
-    mensajeAccion: String? = null,
-    onLimpiarMensaje: () -> Unit = {},
-    onCambiarEstado: (EstadoReporte) -> Unit = {},
-    onReintentarSincronizacion: () -> Unit = {},
+    viewModel: DetalleReporteViewModel,
     onBack: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val reporte = uiState.reporte
     val snackbarHostState = remember { SnackbarHostState() }
-    var estuvoCargado by remember { mutableStateOf(false) }
 
-    LaunchedEffect(reporte) {
-        if (reporte != null) {
-            estuvoCargado = true
-        }
-    }
-
-    LaunchedEffect(mensajeAccion) {
-        if (!mensajeAccion.isNullOrBlank()) {
-            snackbarHostState.showSnackbar(mensajeAccion)
-            onLimpiarMensaje()
+    LaunchedEffect(uiState.mensajeAccion) {
+        val mensaje = uiState.mensajeAccion
+        if (!mensaje.isNullOrBlank()) {
+            snackbarHostState.showSnackbar(mensaje)
+            viewModel.limpiarMensaje()
         }
     }
 
@@ -80,59 +95,115 @@ fun DetalleReporteScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Detalle del Reporte") },
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.detail_title),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(id = R.string.action_back))
                     }
-                }
+                },
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { padding ->
         if (reporte == null) {
-            Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (estuvoCargado) {
+            Box(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (uiState.estuvoCargado) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(24.dp)
                     ) {
                         Text(
-                            text = "Reporte sincronizado con el servidor.",
+                            text = stringResource(id = R.string.detail_synced_msg),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(onClick = onBack) {
-                            Text("Volver al listado")
+                            Text(stringResource(id = R.string.detail_back_to_list))
                         }
                     }
                 } else {
-                    Text("Reporte no encontrado")
+                    Text(
+                        text = stringResource(id = R.string.detail_not_found),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             return@Scaffold
         }
 
-        Column(
+        val coordenadasParseadas = remember(reporte.latitud, reporte.longitud, reporte.ubicacion) {
+            if (reporte.latitud != null && reporte.longitud != null) {
+                reporte.latitud to reporte.longitud
+            } else {
+                parsearCoordenadasUbicacion(reporte.ubicacion)
+            }
+        }
+
+        val pinesMapa = remember(
+            reporte.idReporte,
+            reporte.titulo,
+            reporte.categoria,
+            reporte.estado,
+            reporte.esUrgente,
+            coordenadasParseadas
+        ) {
+            coordenadasParseadas?.let { (latitud, longitud) ->
+                listOf(
+                    PinMapaUi(
+                        id = reporte.idReporte,
+                        latitud = latitud,
+                        longitud = longitud,
+                        colorHex = colorHexPorReporte(reporte),
+                        titulo = reporte.titulo,
+                        descripcion = "${reporte.categoria} • ${reporte.fechaHoraFormateada} • ${reporte.estado.etiqueta}",
+                        mostrarInfoWindow = true
+                    )
+                )
+            } ?: emptyList()
+        }
+
+        val fotoActual = reporte.localFotoUri?.takeIf { it.isNotBlank() } ?: reporte.fotoUri
+
+        Box(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.TopCenter
         ) {
-            Text(text = reporte.titulo, style = MaterialTheme.typography.headlineMedium)
-
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 840.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+            // Banner de estado de sincronización Offline-First
             if (reporte.syncStatus != SyncStatus.SYNCED) {
-                Spacer(modifier = Modifier.height(12.dp))
                 Surface(
                     color = if (reporte.syncStatus == SyncStatus.SYNC_ERROR) {
                         MaterialTheme.colorScheme.errorContainer
                     } else {
                         MaterialTheme.colorScheme.secondaryContainer
                     },
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = if (reporte.syncStatus == SyncStatus.SYNC_ERROR) {
@@ -152,6 +223,7 @@ fun DetalleReporteScreen(
                             Text(
                                 text = reporte.syncStatus.etiqueta,
                                 style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
                                 color = if (reporte.syncStatus == SyncStatus.SYNC_ERROR) {
                                     MaterialTheme.colorScheme.onErrorContainer
                                 } else {
@@ -169,238 +241,412 @@ fun DetalleReporteScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedButton(
-                            onClick = onReintentarSincronizacion,
-                            enabled = !sincronizando
+                            onClick = viewModel::reintentarSincronizacion,
+                            enabled = !uiState.sincronizando
                         ) {
-                            Text(if (sincronizando) "Sincronizando..." else "Reintentar sincronización")
+                            Text(if (uiState.sincronizando) "Sincronizando..." else "Reintentar sincronización")
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "Estatus: ${reporte.estado.etiqueta}", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { reporte.estado.progreso },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = if (reporte.estado == EstadoReporte.RESUELTO) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-
-            // Control de roles (RBAC): Solo ADMIN u operadores departamentales pueden cambiar el estado
-            if (puedeCambiarEstado && reporte.syncStatus == SyncStatus.SYNCED) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "Actualizar estado (Operador)",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(
+            // 1. Evidencia fotográfica destacada y previsualizable
+            if (!fotoActual.isNullOrBlank()) {
+                ElevatedCard(
+                    onClick = { viewModel.onMostrarPreviewImagenChange(true) },
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
                 ) {
-                    val estadosPermitidos = listOf(
-                        EstadoReporte.ENVIADO,
-                        EstadoReporte.EN_PROCESO,
-                        EstadoReporte.RESUELTO
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(225.dp)
+                    ) {
+                        AsyncImage(
+                            model = fotoActual,
+                            contentDescription = "Evidencia fotográfica",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(72.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.Black.copy(alpha = 0.52f)
+                                        )
+                                    )
+                                )
+                        )
+
+                        Text(
+                            text = "Evidencia fotográfica",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(horizontal = 14.dp, vertical = 12.dp)
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(12.dp),
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ZoomIn,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Ver imagen",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Información principal y progreso de atención (solo lectura para ciudadano)
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.5.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = reporte.categoria,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        if (reporte.esUrgente) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PriorityHigh,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = "Urgente",
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = reporte.titulo,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
                     )
-                    estadosPermitidos.forEach { estadoOpcion ->
-                        val seleccionado = reporte.estado == estadoOpcion
-                        FilterChip(
-                            selected = seleccionado,
-                            enabled = !actualizandoEstado && !seleccionado,
-                            onClick = { onCambiarEstado(estadoOpcion) },
-                            label = { Text(estadoOpcion.etiqueta) },
-                            modifier = Modifier.weight(1f)
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarToday,
+                                    contentDescription = "Fecha",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = reporte.fechaFormateada,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = "Hora",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = reporte.hora,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    val esResuelto = reporte.estado == EstadoReporte.RESUELTO
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Estatus de atención",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = if (esResuelto) {
+                                        MaterialTheme.colorScheme.tertiaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    }
+                                ) {
+                                    Text(
+                                        text = reporte.estado.etiqueta,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (esResuelto) {
+                                            MaterialTheme.colorScheme.onTertiaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        },
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LinearProgressIndicator(
+                                progress = { reporte.estado.progreso },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp)),
+                                color = if (esResuelto) {
+                                    MaterialTheme.colorScheme.tertiary
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 3. Descripción
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.5.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Descripción",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = reporte.descripcion,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            // 4. Ubicación con mapa previsualizable
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.5.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Ubicación",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        if (coordenadasParseadas != null) {
+                            TextButton(
+                                onClick = { viewModel.onMostrarPreviewMapaChange(true) },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.OpenInFull,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Ampliar",
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (coordenadasParseadas == null) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = reporte.ubicacion?.takeIf { it.isNotBlank() }
+                                        ?: "Sin ubicación exacta registrada",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        val (latitud, longitud) = coordenadasParseadas
+                        OsmMapCard(
+                            latitudCamara = latitud,
+                            longitudCamara = longitud,
+                            pines = pinesMapa,
+                            zoomInicial = 16.5,
+                            zoomCamara = 16.5,
+                            radioEsquina = 16.dp,
+                            etiquetaInferior = reporte.ubicacion,
+                            onAmpliarClick = { viewModel.onMostrarPreviewMapaChange(true) }
                         )
                     }
                 }
-                if (actualizandoEstado) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Text(
-                        text = reporte.categoria,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-                if (reporte.esUrgente) {
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = "URGENTE", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = "Fecha",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = reporte.fechaFormateada,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Icon(
-                    imageVector = Icons.Default.Schedule,
-                    contentDescription = "Hora",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = reporte.hora,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "Descripción", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = reporte.descripcion, style = MaterialTheme.typography.bodyLarge)
-
-            if (reporte.fotoUri != null) {
-                Spacer(modifier = Modifier.height(18.dp))
-                Text(text = "Evidencia fotográfica", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                AsyncImage(
-                    model = reporte.fotoUri,
-                    contentDescription = "Evidencia",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                )
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-            Text(text = "Ubicación", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            MapaDetalleReporteCard(reporte = reporte)
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-}
-
-@SuppressLint("ClickableViewAccessibility")
-@Composable
-private fun MapaDetalleReporteCard(reporte: Reporte) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    val coordenadasParseadas = parsearCoordenadasUbicacion(reporte.ubicacion)
-    val latitud = coordenadasParseadas?.first ?: LATITUD_CIUDAD_DEFECTO
-    val longitud = coordenadasParseadas?.second ?: LONGITUD_CIUDAD_DEFECTO
-    val etiquetaUbicacion = reporte.ubicacion ?: "Ubicación aproximada"
-
-    val mapView = remember(reporte.idReporte) {
-        configurarOsmdroid(context)
-        MapView(context).apply {
-            aplicarEstiloModerno()
-            controller.setZoom(16.5)
-            controller.setCenter(GeoPoint(latitud, longitud))
-            setOnTouchListener { vista, evento ->
-                when (evento.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        vista.parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        vista.parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-                false
+            Spacer(modifier = Modifier.height(12.dp))
             }
         }
-    }
 
-    DisposableEffect(lifecycleOwner, mapView) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                else -> Unit
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onDetach()
-        }
-    }
-
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp),
-        shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize(),
-                update = { mapa ->
-                    mapa.overlays.clear()
-                    val marker = Marker(mapa).apply {
-                        position = GeoPoint(latitud, longitud)
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        icon = crearPinMapa(context, colorHexPorReporte(reporte))
-                        title = reporte.titulo
-                        subDescription = "${reporte.categoria} • ${reporte.fechaHoraFormateada} • ${reporte.estado.etiqueta}"
-                    }
-                    mapa.overlays.add(marker)
-                    marker.showInfoWindow()
-                    mapa.invalidate()
-                }
+        if (uiState.mostrarPreviewImagen && !fotoActual.isNullOrBlank()) {
+            ImagenPreviewDialog(
+                imagenUri = fotoActual,
+                titulo = reporte.titulo,
+                onDismiss = { viewModel.onMostrarPreviewImagenChange(false) }
             )
+        }
 
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(8.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                tonalElevation = 4.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = etiquetaUbicacion,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-            }
+        if (uiState.mostrarPreviewMapa && coordenadasParseadas != null) {
+            MapaPreviewDialog(
+                titulo = reporte.titulo,
+                subtitulo = reporte.ubicacion ?: reporte.categoria,
+                latitudInicial = coordenadasParseadas.first,
+                longitudInicial = coordenadasParseadas.second,
+                pines = pinesMapa,
+                zoomInicial = 17.0,
+                etiquetaInferior = reporte.ubicacion,
+                onDismiss = { viewModel.onMostrarPreviewMapaChange(false) }
+            )
         }
     }
 }

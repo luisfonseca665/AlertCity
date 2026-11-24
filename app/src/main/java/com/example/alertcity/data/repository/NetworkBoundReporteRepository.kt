@@ -279,7 +279,11 @@ class NetworkBoundReporteRepository(
                 toDate = toDate
             )
             if (response.isSuccessful) {
-                val reportes = response.body().orEmpty().map { ReporteMapper.toDomain(it) }
+                val remotos = response.body().orEmpty()
+                if (remotos.isNotEmpty()) {
+                    dao.upsertRemoteReports(remotos.map { ReporteMapper.toEntity(it) })
+                }
+                val reportes = remotos.map { ReporteMapper.toDomain(it) }
                 Result.success(reportes)
             } else {
                 val errorMsg = ApiErrorParser.formatMessage(response, "Error al filtrar reportes")
@@ -337,8 +341,49 @@ class NetworkBoundReporteRepository(
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Excepción al actualizar estado del reporte", e)
-            Result.failure(Exception("No se pudo conectar con el servidor."))
+            Log.w(TAG, "Actualizando estado localmente en Room (modo offline)", e)
+            val localEntity = dao.getAllReportsOnce().find { it.idReporte == reportId }
+            if (localEntity != null) {
+                val updated = localEntity.toDomain().copy(estado = newState)
+                dao.updateReport(updated.toEntity())
+                Result.success(updated)
+            } else {
+                Result.failure(Exception("No se pudo conectar con el servidor."))
+            }
+        }
+    }
+
+    override suspend fun updateReport(report: Reporte): Result<Unit> {
+        return try {
+            dao.updateReport(report.toEntity())
+            if (report.syncStatus == SyncStatus.SYNCED && networkMonitor?.checkCurrentlyOnline() != false) {
+                try {
+                    val backendState = ReporteMapper.mapDomainStateToBackendEnum(report.estado)
+                    val response = api.updateReportState(
+                        reportId = report.idReporte,
+                        request = UpdateReportStateRequest(state = backendState)
+                    )
+                    if (response.isSuccessful && response.body() != null) {
+                        dao.addReport(ReporteMapper.toEntity(response.body()!!))
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Actualización sincronizada solo en local Room", e)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al actualizar reporte localmente en Room", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteReport(idReporte: String): Result<Unit> {
+        return try {
+            dao.deleteReportById(idReporte)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al eliminar reporte localmente en Room", e)
+            Result.failure(e)
         }
     }
 

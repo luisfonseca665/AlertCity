@@ -45,8 +45,7 @@ object ReporteMapper {
     fun mapBackendStateToDomain(state: String?): EstadoReporte {
         return when (state?.uppercase()?.trim()) {
             "RESUELTO" -> EstadoReporte.RESUELTO
-            "EN_PROCESO" -> EstadoReporte.EN_PROCESO
-            "REVISION" -> EstadoReporte.REVISION
+            "EN_PROCESO", "REVISION" -> EstadoReporte.EN_PROCESO
             else -> EstadoReporte.ENVIADO
         }
     }
@@ -54,7 +53,7 @@ object ReporteMapper {
     fun mapDomainStateToBackendEnum(estado: EstadoReporte): String {
         return when (estado) {
             EstadoReporte.ENVIADO -> "ENVIADO"
-            EstadoReporte.REVISION, EstadoReporte.EN_PROCESO -> "EN_PROCESO"
+            EstadoReporte.EN_PROCESO -> "EN_PROCESO"
             EstadoReporte.RESUELTO -> "RESUELTO"
         }
     }

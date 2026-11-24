@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.example.alertcity.data.local.entity.ReporteEntity
 import com.example.alertcity.domain.model.SyncStatus
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +38,9 @@ interface ReporteDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(reportes: List<ReporteEntity>)
+
+    @Update
+    suspend fun updateReport(reporte: ReporteEntity)
 
     @Transaction
     suspend fun replacePendingWithSynced(localId: String, syncedEntity: ReporteEntity) {

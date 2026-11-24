@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CardDefaults
@@ -32,11 +34,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.alertcity.R
 import com.example.alertcity.domain.model.Reporte
+import com.example.alertcity.domain.model.SyncStatus
 
 @Composable
 fun ReporteItemCard(
@@ -194,8 +199,28 @@ private fun ContenidoTarjetaReporte(
                     EtiquetaUrgente()
                 }
             }
+
+            if (reporte.syncStatus != SyncStatus.SYNCED) {
+                Spacer(modifier = Modifier.height(5.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val esErrorSync = reporte.syncStatus == SyncStatus.SYNC_ERROR
+                    Icon(
+                        imageVector = if (esErrorSync) Icons.Default.ErrorOutline else Icons.Default.CloudQueue,
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp),
+                        tint = if (esErrorSync) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = reporte.syncStatus.etiqueta,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (esErrorSync) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
 
+        val fotoMostrar = reporte.localFotoUri?.takeIf { it.isNotBlank() } ?: reporte.fotoUri
         when {
             onUbicarEnMapaClick != null -> {
                 IconButton(onClick = onUbicarEnMapaClick) {
@@ -210,10 +235,10 @@ private fun ContenidoTarjetaReporte(
                     )
                 }
             }
-            !reporte.fotoUri.isNullOrBlank() -> {
+            !fotoMostrar.isNullOrBlank() -> {
                 Spacer(modifier = Modifier.width(10.dp))
                 AsyncImage(
-                    model = reporte.fotoUri,
+                    model = fotoMostrar,
                     contentDescription = "Imagen del reporte",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -232,7 +257,7 @@ private fun EtiquetaUrgente() {
         color = MaterialTheme.colorScheme.errorContainer
     ) {
         Text(
-            text = "URGENTE",
+            text = stringResource(id = R.string.badge_urgent),
             color = MaterialTheme.colorScheme.onErrorContainer,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,

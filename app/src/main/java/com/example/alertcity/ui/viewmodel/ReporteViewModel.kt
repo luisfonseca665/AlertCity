@@ -6,14 +6,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.alertcity.AlertCityApp
+import com.example.alertcity.data.local.SessionManager
+import com.example.alertcity.data.mapper.ReporteMapper
 import com.example.alertcity.data.remote.NetworkMonitor
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -31,9 +33,7 @@ data class ListaReportesUiState(
     val sincronizando: Boolean = false,
     val isOnline: Boolean = true,
     val pendingSyncCount: Int = 0,
-    val mensajeError: String? = null,
-    val actualizandoEstado: Boolean = false,
-    val mensajeEstadoReporte: String? = null
+    val mensajeError: String? = null
 ) {
     val listaVisible: List<Reporte>
         get() = reportesFiltrados ?: reportes
@@ -44,6 +44,7 @@ data class ListaReportesUiState(
 
 class ReporteViewModel(
     private val repository: ReporteRepository,
+    private val sessionManager: SessionManager,
     private val networkMonitor: NetworkMonitor? = null
 ) : ViewModel() {
 
@@ -54,12 +55,27 @@ class ReporteViewModel(
 
     init {
         viewModelScope.launch {
-            repository.getAllReports().collect { lista ->
-                _uiState.update {
-                    it.copy(
-                        reportes = lista,
-                        totalReportes = lista.size,
-                        totalUrgentes = lista.count { reporte -> reporte.esUrgente }
+            combine(
+                repository.getAllReports(),
+                sessionManager.sessionFlow
+            ) { lista, session ->
+                val userId = session?.userId
+                if (!userId.isNullOrBlank()) {
+                    lista.filter { it.idUsuario.equals(userId, ignoreCase = true) }
+                } else {
+                    emptyList()
+                }
+            }.collect { misReportes ->
+                _uiState.update { actual ->
+                    val estadoActualizado = actual.copy(
+                        reportes = misReportes,
+                        totalReportes = misReportes.size,
+                        totalUrgentes = misReportes.count { reporte -> reporte.esUrgente },
+                        misActivosCount = misReportes.count { reporte -> reporte.estado != EstadoReporte.RESUELTO },
+                        misResueltosCount = misReportes.count { reporte -> reporte.estado == EstadoReporte.RESUELTO }
+                    )
+                    estadoActualizado.copy(
+                        reportesFiltrados = calcularFiltradosPropios(estadoActualizado)
                     )
                 }
             }
@@ -93,15 +109,15 @@ class ReporteViewModel(
             resultado.fold(
                 onSuccess = { dashboard ->
                     _uiState.update { actual ->
-                        actual.copy(
+                        val actualizado = actual.copy(
                             cargando = false,
                             misActivosCount = dashboard.myActiveReportsCount,
                             misResueltosCount = dashboard.mySolvedReportsCount,
                             mensajeError = null
                         )
-                    }
-                    if (_uiState.value.tieneFiltrosActivos) {
-                        aplicarFiltrosRemotos()
+                        actualizado.copy(
+                            reportesFiltrados = calcularFiltradosPropios(actualizado)
+                        )
                     }
                 },
                 onFailure = { error ->
@@ -121,17 +137,8 @@ class ReporteViewModel(
             _uiState.update { it.copy(sincronizando = true, mensajeError = null) }
             val syncResult = repository.syncPendingReports()
             syncResult.fold(
-                onSuccess = { synced ->
-                    _uiState.update {
-                        it.copy(
-                            sincronizando = false,
-                            mensajeEstadoReporte = if (synced > 0) {
-                                "$synced reporte(s) sincronizado(s) con el servidor"
-                            } else {
-                                it.mensajeEstadoReporte
-                            }
-                        )
-                    }
+                onSuccess = {
+                    _uiState.update { it.copy(sincronizando = false) }
                     refrescar()
                 },
                 onFailure = { error ->
@@ -147,18 +154,24 @@ class ReporteViewModel(
     }
 
     fun onFiltroCategoriaChange(categoria: String?) {
-        _uiState.update { it.copy(filtroCategoria = categoria) }
-        aplicarFiltrosRemotos()
+        _uiState.update { actual ->
+            val nuevo = actual.copy(filtroCategoria = categoria)
+            nuevo.copy(reportesFiltrados = calcularFiltradosPropios(nuevo))
+        }
     }
 
     fun onFiltroEstadoChange(estado: String?) {
-        _uiState.update { it.copy(filtroEstado = estado) }
-        aplicarFiltrosRemotos()
+        _uiState.update { actual ->
+            val nuevo = actual.copy(filtroEstado = estado)
+            nuevo.copy(reportesFiltrados = calcularFiltradosPropios(nuevo))
+        }
     }
 
     fun onFiltroUrgentesChange(soloUrgentes: Boolean) {
-        _uiState.update { it.copy(filtroSoloUrgentes = soloUrgentes) }
-        aplicarFiltrosRemotos()
+        _uiState.update { actual ->
+            val nuevo = actual.copy(filtroSoloUrgentes = soloUrgentes)
+            nuevo.copy(reportesFiltrados = calcularFiltradosPropios(nuevo))
+        }
     }
 
     fun limpiarFiltros() {
@@ -173,71 +186,19 @@ class ReporteViewModel(
         }
     }
 
-    private fun aplicarFiltrosRemotos() {
-        val estado = _uiState.value
-        if (!estado.tieneFiltrosActivos) {
-            _uiState.update { it.copy(reportesFiltrados = null) }
-            return
-        }
+    private fun calcularFiltradosPropios(estado: ListaReportesUiState): List<Reporte>? {
+        if (!estado.tieneFiltrosActivos) return null
+        val categoriaEsperada = estado.filtroCategoria?.takeIf { it.isNotBlank() }?.trim()?.uppercase()
+        val estadoEsperado = estado.filtroEstado?.takeIf { it.isNotBlank() }?.trim()?.uppercase()
 
-        viewModelScope.launch {
-            _uiState.update { it.copy(cargando = true, mensajeError = null) }
-            val result = repository.getFilteredReports(
-                category = estado.filtroCategoria,
-                state = estado.filtroEstado,
-                urgent = if (estado.filtroSoloUrgentes) true else null
-            )
-            result.fold(
-                onSuccess = { lista ->
-                    _uiState.update {
-                        it.copy(
-                            cargando = false,
-                            reportesFiltrados = lista
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            cargando = false,
-                            mensajeError = error.localizedMessage
-                        )
-                    }
-                }
-            )
+        return estado.reportes.filter { reporte ->
+            val cumpleCategoria = categoriaEsperada == null ||
+                ReporteMapper.mapCategoryToBackendEnum(reporte.categoria) == categoriaEsperada
+            val cumpleEstado = estadoEsperado == null ||
+                ReporteMapper.mapDomainStateToBackendEnum(reporte.estado) == estadoEsperado
+            val cumpleUrgente = !estado.filtroSoloUrgentes || reporte.esUrgente
+            cumpleCategoria && cumpleEstado && cumpleUrgente
         }
-    }
-
-    fun actualizarEstadoReporte(reportId: String, nuevoEstado: EstadoReporte) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(actualizandoEstado = true, mensajeEstadoReporte = null) }
-            val resultado = repository.updateReportState(reportId, nuevoEstado)
-            resultado.fold(
-                onSuccess = { actualizado ->
-                    _uiState.update { actual ->
-                        actual.copy(
-                            actualizandoEstado = false,
-                            reportesFiltrados = actual.reportesFiltrados?.map {
-                                if (it.idReporte == actualizado.idReporte) actualizado else it
-                            },
-                            mensajeEstadoReporte = "Estado actualizado a ${actualizado.estado.etiqueta}"
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update { actual ->
-                        actual.copy(
-                            actualizandoEstado = false,
-                            mensajeEstadoReporte = error.localizedMessage ?: "No se pudo actualizar el estado"
-                        )
-                    }
-                }
-            )
-        }
-    }
-
-    fun limpiarMensajeEstadoReporte() {
-        _uiState.update { it.copy(mensajeEstadoReporte = null) }
     }
 
     companion object {
@@ -246,6 +207,7 @@ class ReporteViewModel(
                 val app = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as AlertCityApp)
                 ReporteViewModel(
                     repository = app.reporteRepository,
+                    sessionManager = app.sessionManager,
                     networkMonitor = app.networkMonitor
                 )
             }

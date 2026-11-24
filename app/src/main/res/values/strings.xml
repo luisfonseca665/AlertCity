@@ -1,7 +1,152 @@
 <resources>
     <string name="app_name">Ciudad Alerta</string>
-    <string name="greeting">Hola, Luis Enrique</string>
+    <string name="greeting">Hola, %1$s</string>
+    <string name="greeting_default">Hola, Ciudadano</string>
     <string name="location">📍 Uriangato, Gto.</string>
     <string name="my_reports">Mis Reportes</string>
+    <string name="filtered_reports">Reportes filtrados (%1$d)</string>
     <string name="no_reports">No hay reportes aún.</string>
+    <string name="no_filtered_reports">No hay reportes que coincidan con los filtros</string>
+
+    <!-- Navegación -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_history">Histórico</string>
+    <string name="nav_report">Reportar</string>
+    <string name="nav_new_report_desc">Nuevo reporte</string>
+    <string name="nav_admin_panel">Panel</string>
+    <string name="nav_admin_map">Mapa</string>
+    <string name="action_back">Regresar</string>
+    <string name="action_logout">Cerrar sesión</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_ok">OK</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_expand">Ampliar</string>
+    <string name="action_expand_map">Ampliar mapa</string>
+    <string name="action_view_detail">Ver detalle</string>
+    <string name="action_manage">Gestionar</string>
+    <string name="action_advance_status">Avanzar estatus</string>
+
+    <!-- Login y Registro -->
+    <string name="login_subtitle">Inicia sesión para reportar o gestionar incidencias según tu rol</string>
+    <string name="login_user_label">Usuario o correo electrónico</string>
+    <string name="login_user_placeholder">Ej. laura_ciudadana o carlos_vialidad</string>
+    <string name="login_password_label">Contraseña</string>
+    <string name="login_password_placeholder">Ingresa tu contraseña</string>
+    <string name="login_show_password">Mostrar contraseña</string>
+    <string name="login_hide_password">Ocultar contraseña</string>
+    <string name="login_verifying">Verificando...</string>
+    <string name="login_button">Iniciar sesión</string>
+    <string name="login_no_account">¿No tienes una cuenta?</string>
+    <string name="login_register_link">Regístrate</string>
+
+    <string name="register_title">Crear cuenta ciudadana</string>
+    <string name="register_subtitle">Completa tus datos personales para registrarte como ciudadano en AlertCity</string>
+    <string name="register_first_name_label">Nombre(s)</string>
+    <string name="register_first_name_placeholder">Ej. Laura</string>
+    <string name="register_last_name_label">Apellido(s)</string>
+    <string name="register_last_name_placeholder">Ej. Sánchez</string>
+    <string name="register_address_label">Dirección</string>
+    <string name="register_address_placeholder">Ej. Zona Centro, Uriangato, Gto.</string>
+    <string name="register_username_label">Nombre de usuario</string>
+    <string name="register_username_placeholder">Ej. laura.sanchez</string>
+    <string name="register_email_label">Correo electrónico</string>
+    <string name="register_email_placeholder">Ej. laura@correo.com</string>
+    <string name="register_password_label">Contraseña (mín. 6 caracteres)</string>
+    <string name="register_password_placeholder">Crea una contraseña</string>
+    <string name="register_confirm_password_label">Confirmar contraseña</string>
+    <string name="register_confirm_password_placeholder">Repite tu contraseña</string>
+    <string name="register_password_mismatch">Las contraseñas no coinciden</string>
+    <string name="register_submitting">Registrando...</string>
+    <string name="register_button">Registrarse</string>
+    <string name="register_has_account">¿Ya tienes una cuenta?</string>
+
+    <!-- Lista de Reportes y Filtros -->
+    <string name="metric_my_active">Mis Activos</string>
+    <string name="metric_reports">Reportes</string>
+    <string name="metric_sent">Enviados</string>
+    <string name="metric_in_progress">Atendiendo</string>
+    <string name="metric_resolved">Resueltos</string>
+    <string name="metric_urgent">Urgentes</string>
+    <string name="filter_all">Todos</string>
+    <string name="filter_all_count">Todos (%1$d)</string>
+    <string name="filter_urgent">Urgentes</string>
+    <string name="filter_only_urgent">Solo Urgentes</string>
+    <string name="filter_clear">Limpiar filtros</string>
+    <string name="offline_pending_banner">Modo sin conexión • %1$d reporte(s) pendiente(s) de envío</string>
+    <string name="offline_local_banner">Modo sin conexión • Mostrando datos guardados localmente</string>
+    <string name="online_pending_banner">%1$d reporte(s) pendiente(s) de sincronizar</string>
+    <string name="sync_sending">Enviando...</string>
+    <string name="sync_action">Sincronizar</string>
+    <string name="sync_retry">Reintentar sincronización</string>
+    <string name="sync_retrying">Sincronizando...</string>
+    <string name="badge_urgent">URGENTE</string>
+    <string name="label_urgent">Urgente</string>
+
+    <!-- Crear Reporte -->
+    <string name="create_report_title">Nuevo Reporte</string>
+    <string name="create_issue_label">Incidencia</string>
+    <string name="create_issue_placeholder">Ej. Lámpara rota en parque central</string>
+    <string name="create_desc_label">Descripción</string>
+    <string name="create_desc_placeholder">Detalla lo que ocurre...</string>
+    <string name="create_category_label">Categoría del problema</string>
+    <string name="create_time_button">Hora del incidente: %1$s</string>
+    <string name="create_mark_urgent">Marcar como urgente</string>
+    <string name="create_change_photo">Cambiar Foto</string>
+    <string name="create_add_photo">Evidencia</string>
+    <string name="create_change_location">Cambiar Ubicación</string>
+    <string name="create_add_location">Ubicación</string>
+    <string name="create_photo_section">Evidencia fotográfica</string>
+    <string name="create_preview_badge">Previsualizar</string>
+    <string name="create_location_section">Ubicación del incidente</string>
+    <string name="create_location_selected">Seleccionada: %1$s (puedes tocar otro punto en el mapa)</string>
+    <string name="create_location_hint">Toca el punto en el mapa o usa el botón \'Ubicación\'</string>
+    <string name="create_saving">Guardando...</string>
+    <string name="create_save_button">Guardar Reporte</string>
+    <string name="create_attach_dialog_title">Adjuntar Evidencia</string>
+    <string name="create_take_photo">Tomar Foto con Cámara</string>
+    <string name="create_pick_gallery">Elegir de Galería</string>
+    <string name="create_select_location_title">Seleccionar ubicación</string>
+    <string name="create_select_location_subtitle">Toca un punto en el mapa para fijar la ubicación</string>
+
+    <!-- Histórico -->
+    <string name="history_title">Historial de Reportes</string>
+    <string name="history_nearby_title">Reportes Cercanos (3 km)</string>
+    <string name="history_subtitle">%1$d incidencias registradas en el mapa</string>
+    <string name="history_filter_nearby">Cercanos (3 km)</string>
+    <string name="legend_urgent">Urgente</string>
+    <string name="legend_active">Activo</string>
+    <string name="legend_resolved">Resuelto</string>
+    <string name="history_list_header">Lista de reportes</string>
+    <string name="history_empty">No hay reportes disponibles</string>
+    <string name="history_map_dialog_title">Mapa de incidencias</string>
+    <string name="history_map_dialog_subtitle">%1$d reportes registrados</string>
+
+    <!-- Detalle y Admin -->
+    <string name="detail_title">Detalle del Reporte</string>
+    <string name="detail_not_found">Reporte no encontrado</string>
+    <string name="detail_synced_msg">Reporte sincronizado con el servidor.</string>
+    <string name="detail_back_to_list">Volver al listado</string>
+    <string name="detail_view_image">Ver imagen</string>
+    <string name="detail_status_label">Estatus de atención</string>
+    <string name="detail_description_title">Descripción</string>
+    <string name="detail_citizen_description_title">Descripción del ciudadano</string>
+    <string name="detail_location_title">Ubicación</string>
+    <string name="detail_geo_location_title">Ubicación georreferenciada</string>
+    <string name="detail_no_exact_location">Sin ubicación exacta registrada</string>
+
+    <string name="admin_manage_title">Gestionar Reporte</string>
+    <string name="admin_access_denied">No tienes permisos para ver reportes de otra categoría (%1$s)</string>
+    <string name="admin_attention_control">Control de atención</string>
+    <string name="admin_update_status_prompt">Actualizar estatus del reporte:</string>
+    <string name="admin_urgent_priority_title">Prioridad urgente</string>
+    <string name="admin_urgent_priority_desc">Destaca el reporte en el panel y mapa operativo</string>
+    <string name="admin_delete_dialog_title">Eliminar reporte</string>
+    <string name="admin_delete_dialog_msg">¿Seguro que deseas eliminar \"%1$s\"? Esta acción quitará el registro localmente.</string>
+    <string name="admin_urgent_pending_banner">%1$d reportes urgentes pendientes de resolver</string>
+    <string name="admin_showing">Mostrando</string>
+    <string name="admin_filter_action">Filtrar</string>
+    <string name="admin_search_placeholder">Buscar por título, categoría o detalle...</string>
+    <string name="admin_inbox_header">Bandeja de atención (%1$d)</string>
+    <string name="admin_map_subtitle">%1$s • %2$d de %3$d incidencias</string>
+    <string name="admin_map_shown_subtitle">%1$d incidencias mostradas</string>
 </resources>

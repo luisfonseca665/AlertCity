@@ -12,6 +12,9 @@ class ReporteConverters {
 
     @TypeConverter
     fun toEstadoReporte(valor: String): EstadoReporte {
+        if (valor.equals("REVISION", ignoreCase = true)) {
+            return EstadoReporte.EN_PROCESO
+        }
         return runCatching { EstadoReporte.valueOf(valor) }.getOrDefault(EstadoReporte.ENVIADO)
     }
 

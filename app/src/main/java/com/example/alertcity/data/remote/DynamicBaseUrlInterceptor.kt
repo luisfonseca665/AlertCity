@@ -11,10 +11,11 @@ import okhttp3.Response
 class DynamicBaseUrlInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
+        val useHttps = NetworkConstants.isCloudHost()
         val newUrl = original.url.newBuilder()
-            .scheme("http")
+            .scheme(if (useHttps) "https" else "http")
             .host(NetworkConstants.hostIp)
-            .port(NetworkConstants.port)
+            .port(if (useHttps) 443 else NetworkConstants.port)
             .build()
 
         val updatedRequest = original.newBuilder()

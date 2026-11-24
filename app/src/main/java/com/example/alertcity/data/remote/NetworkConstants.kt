@@ -4,11 +4,11 @@ import android.content.Context
 import android.content.SharedPreferences
 
 object NetworkConstants {
-    // IP de la computadora en la red Wi-Fi local (por defecto)
-    const val DEFAULT_HOST_IP: String = "192.168.1.5"
-    const val DEFAULT_PORT: Int = 8080
+    // Dominio en la nube de Microsoft Azure App Service (por defecto)
+    const val DEFAULT_HOST_IP: String = "alertcity-drf9a3hbfzd2ddae.westus3-01.azurewebsites.net"
+    const val DEFAULT_PORT: Int = 443
 
-    private const val PREFS_NAME = "alertcity_network_prefs"
+    private const val PREFS_NAME = "alertcity_network_prefs_v2"
     private const val KEY_HOST_IP = "host_ip"
     private const val KEY_PORT = "host_port"
 
@@ -22,8 +22,16 @@ object NetworkConstants {
     var port: Int = DEFAULT_PORT
         private set
 
+    fun isCloudHost(host: String = hostIp, targetPort: Int = port): Boolean {
+        return host.endsWith(".azurewebsites.net", ignoreCase = true) || targetPort == 443
+    }
+
     val BASE_URL: String
-        get() = "http://$hostIp:$port/"
+        get() = if (isCloudHost()) {
+            "https://$hostIp/"
+        } else {
+            "http://$hostIp:$port/"
+        }
 
     // id del usuario por defecto (fallback offline)
     const val DEMO_USER_ID: String = "11111111-1111-4111-a111-111111111111"
@@ -33,25 +41,6 @@ object NetworkConstants {
         prefs = sp
         hostIp = sp.getString(KEY_HOST_IP, DEFAULT_HOST_IP)?.trim().takeUnless { it.isNullOrBlank() } ?: DEFAULT_HOST_IP
         port = sp.getInt(KEY_PORT, DEFAULT_PORT).takeIf { it in 1..65535 } ?: DEFAULT_PORT
-    }
-
-    fun updateServer(newHostIp: String, newPort: Int = DEFAULT_PORT) {
-        val cleanHost = newHostIp
-            .trim()
-            .removePrefix("http://")
-            .removePrefix("https://")
-            .substringBefore("/")
-            .substringBefore(":")
-            .ifBlank { DEFAULT_HOST_IP }
-        val cleanPort = newPort.takeIf { it in 1..65535 } ?: DEFAULT_PORT
-
-        hostIp = cleanHost
-        port = cleanPort
-
-        prefs?.edit()
-            ?.putString(KEY_HOST_IP, cleanHost)
-            ?.putInt(KEY_PORT, cleanPort)
-            ?.apply()
     }
 
     fun resolveMediaUrl(imageUrl: String?): String? {

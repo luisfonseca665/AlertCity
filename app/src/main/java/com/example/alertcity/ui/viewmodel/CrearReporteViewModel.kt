@@ -53,6 +53,8 @@ data class CrearReporteUiState(
     val latitudCamara: Double = LATITUD_CIUDAD_DEFECTO,
     val longitudCamara: Double = LONGITUD_CIUDAD_DEFECTO,
     val animarMapaTrigger: Int = 0,
+    val mostrarPreviewImagen: Boolean = false,
+    val mostrarPreviewMapa: Boolean = false,
     val guardando: Boolean = false
 ) {
     val horaFormateada: String
@@ -141,6 +143,14 @@ class CrearReporteViewModel(
 
     fun onFotoCapturada(uri: String) {
         _uiState.update { it.copy(fotoUri = uri) }
+    }
+
+    fun onMostrarPreviewImagenChange(mostrar: Boolean) {
+        _uiState.update { it.copy(mostrarPreviewImagen = mostrar) }
+    }
+
+    fun onMostrarPreviewMapaChange(mostrar: Boolean) {
+        _uiState.update { it.copy(mostrarPreviewMapa = mostrar) }
     }
 
     fun onUbicacionGpsObtenida(latitud: Double, longitud: Double) {

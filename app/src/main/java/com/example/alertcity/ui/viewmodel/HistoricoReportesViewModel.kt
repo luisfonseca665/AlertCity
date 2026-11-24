@@ -10,22 +10,14 @@ import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.repository.ReporteRepository
 import com.example.alertcity.domain.util.LATITUD_CIUDAD_DEFECTO
 import com.example.alertcity.domain.util.LONGITUD_CIUDAD_DEFECTO
-import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
-import kotlin.math.cos
-import kotlin.math.sin
+import com.example.alertcity.domain.util.MarcadorReporte
+import com.example.alertcity.domain.util.construirMarcadoresReportes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-data class MarcadorReporte(
-    val reporte: Reporte,
-    val latitud: Double,
-    val longitud: Double,
-    val tieneUbicacionExacta: Boolean
-)
 
 data class HistoricoReportesUiState(
     val reportes: List<Reporte> = emptyList(),
@@ -37,6 +29,7 @@ data class HistoricoReportesUiState(
     val enfocarTrigger: Int = 0,
     val modoCercanos: Boolean = false,
     val radioKm: Double = 3.0,
+    val mostrarPreviewMapa: Boolean = false,
     val cargando: Boolean = false,
     val mensajeError: String? = null
 )
@@ -51,7 +44,9 @@ class HistoricoReportesViewModel(
     private var todosLosReportes: List<Reporte> = emptyList()
 
     init {
-        refrescar()
+        viewModelScope.launch {
+            repository.refreshReports()
+        }
         viewModelScope.launch {
             repository.getAllReports().collect { lista ->
                 todosLosReportes = lista
@@ -75,7 +70,7 @@ class HistoricoReportesViewModel(
             val result = repository.getNearbyReports(lat = latitud, lng = longitud, radiusKm = radiusKm)
             result.fold(
                 onSuccess = { cercanos ->
-                    val marcadoresCalculados = construirMarcadores(cercanos)
+                    val marcadoresCalculados = construirMarcadoresReportes(cercanos)
                     _uiState.update { actual ->
                         actual.copy(
                             cargando = false,
@@ -107,7 +102,7 @@ class HistoricoReportesViewModel(
     }
 
     private fun actualizarListaYMarcadores(lista: List<Reporte>) {
-        val marcadoresCalculados = construirMarcadores(lista)
+        val marcadoresCalculados = construirMarcadoresReportes(lista)
         _uiState.update { actual ->
             val primerMarcador = marcadoresCalculados.firstOrNull()
             val mantenerCentro = actual.enfocarTrigger > 0 && actual.marcadores.isNotEmpty()
@@ -128,8 +123,13 @@ class HistoricoReportesViewModel(
     fun refrescar() {
         if (_uiState.value.cargando) return
         viewModelScope.launch {
-            _uiState.update { it.copy(cargando = true) }
+            val inicio = System.currentTimeMillis()
+            _uiState.update { it.copy(cargando = true, mensajeError = null) }
             repository.refreshReports()
+            val transcurrido = System.currentTimeMillis() - inicio
+            if (transcurrido < 350L) {
+                delay(350L - transcurrido)
+            }
             _uiState.update { it.copy(cargando = false) }
         }
     }
@@ -151,6 +151,10 @@ class HistoricoReportesViewModel(
         _uiState.update { it.copy(reporteSeleccionado = null) }
     }
 
+    fun onMostrarPreviewMapaChange(mostrar: Boolean) {
+        _uiState.update { it.copy(mostrarPreviewMapa = mostrar) }
+    }
+
     fun centrarVistaGeneral() {
         val primerMarcador = _uiState.value.marcadores.firstOrNull()
         _uiState.update {
@@ -160,35 +164,6 @@ class HistoricoReportesViewModel(
                 longitudCentro = primerMarcador?.longitud ?: LONGITUD_CIUDAD_DEFECTO,
                 zoomMapa = 15.0,
                 enfocarTrigger = it.enfocarTrigger + 1
-            )
-        }
-    }
-
-    private fun construirMarcadores(reportes: List<Reporte>): List<MarcadorReporte> {
-        val conteoPorCoordenada = mutableMapOf<String, Int>()
-
-        return reportes.map { reporte ->
-            val parseada = parsearCoordenadasUbicacion(reporte.ubicacion)
-            val latBase = parseada?.first ?: LATITUD_CIUDAD_DEFECTO
-            val lonBase = parseada?.second ?: LONGITUD_CIUDAD_DEFECTO
-            val clave = "${"%.4f".format(latBase)},${"%.4f".format(lonBase)}"
-
-            val indiceRepetido = conteoPorCoordenada.getOrDefault(clave, 0)
-            conteoPorCoordenada[clave] = indiceRepetido + 1
-
-            val desplazamiento = if (indiceRepetido == 0) {
-                0.0 to 0.0
-            } else {
-                val angulo = indiceRepetido * (Math.PI / 3.0)
-                val radio = 0.0006 * ((indiceRepetido + 5) / 6)
-                (radio * cos(angulo)) to (radio * sin(angulo))
-            }
-
-            MarcadorReporte(
-                reporte = reporte,
-                latitud = latBase + desplazamiento.first,
-                longitud = lonBase + desplazamiento.second,
-                tieneUbicacionExacta = parseada != null
             )
         }
     }

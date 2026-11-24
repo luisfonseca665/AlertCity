@@ -1,7 +1,9 @@
 package com.example.alertcity.data.local
 
 import android.content.Context
+import com.example.alertcity.data.mapper.ReporteMapper
 import com.example.alertcity.data.remote.model.AuthResponse
+import com.example.alertcity.domain.model.Reporte
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,16 +21,54 @@ data class UserSession(
     val nombreCompleto: String
         get() = listOf(firstName, lastName).filter { it.isNotBlank() }.joinToString(" ").ifBlank { username }
 
+    val rolNormalizado: String
+        get() = rol.trim().uppercase()
+
+    val esCiudadano: Boolean
+        get() = rolNormalizado == "CIUDADANO"
+
+    val esOperadorOAdmin: Boolean
+        get() = !esCiudadano
+
     val puedeCambiarEstadoReportes: Boolean
-        get() = rol.uppercase() != "CIUDADANO"
+        get() = esOperadorOAdmin
+
+    /**
+     * Devuelve la categoría del backend asignada a este rol operativo.
+     * - Si es un rol departamental específico (ej. VIALIDAD, AGUA_DRENAJE), devuelve su categoría en mayúsculas.
+     * - Si es ADMIN general o CIUDADANO, devuelve null.
+     */
+    val categoriaBackendAsignada: String?
+        get() = when (rolNormalizado) {
+            "VIALIDAD" -> "VIALIDAD"
+            "ALUMBRADO" -> "ALUMBRADO"
+            "AGUA_DRENAJE", "AGUA" -> "AGUA"
+            "LIMPIEZA" -> "LIMPIEZA"
+            "SEGURIDAD" -> "SEGURIDAD"
+            "AREAS_VERDES" -> "AREAS_VERDES"
+            "ANIMALES" -> "ANIMALES"
+            else -> null
+        }
+
+    val categoriaUiAsignada: String?
+        get() = categoriaBackendAsignada?.let { ReporteMapper.mapBackendCategoryToUi(it) }
+
+    /**
+     * Verifica si un operador/admin puede visualizar y gestionar un reporte según su rol específico.
+     */
+    fun puedeVerYGeestionarReporte(reporte: Reporte): Boolean {
+        if (esCiudadano) return false
+        val categoriaObligatoria = categoriaBackendAsignada ?: return true
+        return ReporteMapper.mapCategoryToBackendEnum(reporte.categoria) == categoriaObligatoria
+    }
 
     val rolLegible: String
-        get() = when (rol.uppercase()) {
+        get() = when (rolNormalizado) {
             "CIUDADANO" -> "Ciudadano"
-            "ADMIN" -> "Administrador"
+            "ADMIN" -> "Administrador General"
             "VIALIDAD" -> "Operador · Vialidad"
             "ALUMBRADO" -> "Operador · Alumbrado"
-            "AGUA_DRENAJE" -> "Operador · Agua y Drenaje"
+            "AGUA_DRENAJE", "AGUA" -> "Operador · Agua y Drenaje"
             "LIMPIEZA" -> "Operador · Limpieza"
             "SEGURIDAD" -> "Operador · Seguridad"
             "AREAS_VERDES" -> "Operador · Áreas Verdes"

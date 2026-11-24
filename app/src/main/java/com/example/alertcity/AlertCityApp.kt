@@ -8,9 +8,10 @@ import com.example.alertcity.data.remote.NetworkConstants
 import com.example.alertcity.data.remote.NetworkMonitor
 import com.example.alertcity.data.repository.AuthRepository
 import com.example.alertcity.data.repository.NetworkBoundReporteRepository
+import com.example.alertcity.data.repository.RoomUsuarioRepository
 import com.example.alertcity.data.worker.SyncScheduler
 import com.example.alertcity.domain.repository.ReporteRepository
-import com.example.alertcity.ui.components.configurarOsmdroid
+import com.example.alertcity.domain.repository.UsuarioRepository
 import com.example.alertcity.ui.components.configurarOsmdroid
 
 class AlertCityApp : Application() {
@@ -21,10 +22,15 @@ class AlertCityApp : Application() {
 
     val database by lazy { AlertCityDatabase.getDatabase(this) }
 
+    val usuarioRepository: UsuarioRepository by lazy {
+        RoomUsuarioRepository(database.usuarioDao())
+    }
+
     val authRepository: AuthRepository by lazy {
         AuthRepository(
             api = ApiClient.api,
-            sessionManager = sessionManager
+            sessionManager = sessionManager,
+            usuarioRepository = usuarioRepository
         )
     }
 

@@ -1,5 +1,6 @@
 package com.example.alertcity
 
+import com.example.alertcity.data.local.UserSession
 import com.example.alertcity.data.local.converter.ReporteConverters
 import com.example.alertcity.data.local.entity.toDomain
 import com.example.alertcity.data.local.entity.toEntity
@@ -7,12 +8,13 @@ import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.model.SyncStatus
 import com.example.alertcity.domain.util.GeoUtils
+import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
 import com.example.alertcity.ui.components.COLOR_PIN_ACTIVO
 import com.example.alertcity.ui.components.COLOR_PIN_RESUELTO
 import com.example.alertcity.ui.components.COLOR_PIN_URGENTE
 import com.example.alertcity.ui.components.colorHexPorReporte
-import com.example.alertcity.ui.components.parsearCoordenadasUbicacion
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -121,5 +123,29 @@ class ExampleUnitTest {
         assertEquals(-101.1902, restored.longitud!!, 0.0001)
         assertEquals("file:///data/user/0/app/files/reportes_fotos/foto_1.jpg", restored.localFotoUri)
         assertEquals("file:///data/user/0/app/files/reportes_fotos/foto_1.jpg", restored.fotoUri)
+    }
+
+    @Test
+    fun rbacRoles_separaCiudadanoYFiltraReportesPorTipoDeProblema() {
+        val reporteVialidad = Reporte(titulo = "Bache", descripcion = "Calle", categoria = "Baches y Vialidad", esUrgente = true, hora = "10:00")
+        val reporteAgua = Reporte(titulo = "Fuga", descripcion = "Tubo", categoria = "Fugas de Agua", esUrgente = true, hora = "11:00")
+        val reporteAlumbrado = Reporte(titulo = "Poste", descripcion = "Luz", categoria = "Alumbrado Público", esUrgente = false, hora = "12:00")
+
+        val sesionCiudadano = UserSession("t", "r", "1", "laura", "l@a.com", "CIUDADANO", "Laura", "Sánchez")
+        val sesionVialidad = UserSession("t", "r", "2", "carlos", "c@a.com", "VIALIDAD", "Carlos", "Vialidad")
+        val sesionAgua = UserSession("t", "r", "3", "roberto", "r@a.com", "AGUA_DRENAJE", "Roberto", "Agua")
+
+        assertTrue(sesionCiudadano.esCiudadano)
+        assertFalse(sesionCiudadano.esOperadorOAdmin)
+        assertFalse(sesionCiudadano.puedeVerYGeestionarReporte(reporteVialidad))
+
+        assertTrue(sesionVialidad.esOperadorOAdmin)
+        assertTrue(sesionVialidad.puedeVerYGeestionarReporte(reporteVialidad))
+        assertFalse(sesionVialidad.puedeVerYGeestionarReporte(reporteAgua))
+        assertFalse(sesionVialidad.puedeVerYGeestionarReporte(reporteAlumbrado))
+
+        assertTrue(sesionAgua.esOperadorOAdmin)
+        assertTrue(sesionAgua.puedeVerYGeestionarReporte(reporteAgua))
+        assertFalse(sesionAgua.puedeVerYGeestionarReporte(reporteVialidad))
     }
 }

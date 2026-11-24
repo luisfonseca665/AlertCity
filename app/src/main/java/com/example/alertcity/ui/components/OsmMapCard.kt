@@ -70,7 +70,7 @@ fun OsmMapCard(
     zoomInicial: Double = 15.5,
     zoomCamara: Double = zoomInicial,
     animarTrigger: Int = 0,
-    alto: Dp = 220.dp,
+    alto: Dp? = 220.dp,
     ocuparTodoElAlto: Boolean = false,
     radioEsquina: Dp = 16.dp,
     elevacion: Dp = 3.dp,
@@ -122,12 +122,10 @@ fun OsmMapCard(
         }
     }
 
-    val cardModifier = if (ocuparTodoElAlto) {
-        modifier.fillMaxSize()
-    } else {
-        modifier
-            .fillMaxWidth()
-            .height(alto)
+    val cardModifier = when {
+        ocuparTodoElAlto -> modifier.fillMaxSize()
+        alto != null -> modifier.fillMaxWidth().height(alto)
+        else -> modifier.fillMaxWidth()
     }
 
     ElevatedCard(
