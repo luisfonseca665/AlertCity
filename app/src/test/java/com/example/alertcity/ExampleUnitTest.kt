@@ -1,5 +1,6 @@
 package com.example.alertcity
 
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import com.example.alertcity.data.local.UserSession
 import com.example.alertcity.data.local.converter.ReporteConverters
 import com.example.alertcity.data.local.entity.toDomain
@@ -9,10 +10,13 @@ import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.model.SyncStatus
 import com.example.alertcity.domain.util.GeoUtils
 import com.example.alertcity.domain.util.parsearCoordenadasUbicacion
+import com.example.alertcity.ui.components.AlertCityContentType
+import com.example.alertcity.ui.components.AlertCityNavigationType
 import com.example.alertcity.ui.components.COLOR_PIN_ACTIVO
 import com.example.alertcity.ui.components.COLOR_PIN_RESUELTO
 import com.example.alertcity.ui.components.COLOR_PIN_URGENTE
 import com.example.alertcity.ui.components.colorHexPorReporte
+import com.example.alertcity.ui.components.obtenerConfiguracionAdaptativa
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -147,5 +151,20 @@ class ExampleUnitTest {
         assertTrue(sesionAgua.esOperadorOAdmin)
         assertTrue(sesionAgua.puedeVerYGeestionarReporte(reporteAgua))
         assertFalse(sesionAgua.puedeVerYGeestionarReporte(reporteVialidad))
+    }
+
+    @Test
+    fun windowSizeClass_asignaNavegacionYContenidoAdaptativoCorrectamente() {
+        val compact = obtenerConfiguracionAdaptativa(WindowWidthSizeClass.Compact)
+        assertEquals(AlertCityNavigationType.BOTTOM_NAVIGATION, compact.navigationType)
+        assertEquals(AlertCityContentType.LIST_ONLY, compact.contentType)
+
+        val medium = obtenerConfiguracionAdaptativa(WindowWidthSizeClass.Medium)
+        assertEquals(AlertCityNavigationType.NAVIGATION_RAIL, medium.navigationType)
+        assertEquals(AlertCityContentType.LIST_ONLY, medium.contentType)
+
+        val expanded = obtenerConfiguracionAdaptativa(WindowWidthSizeClass.Expanded)
+        assertEquals(AlertCityNavigationType.PERMANENT_NAVIGATION_DRAWER, expanded.navigationType)
+        assertEquals(AlertCityContentType.LIST_AND_DETAIL, expanded.contentType)
     }
 }

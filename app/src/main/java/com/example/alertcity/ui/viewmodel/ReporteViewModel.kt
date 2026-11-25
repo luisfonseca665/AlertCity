@@ -33,10 +33,15 @@ data class ListaReportesUiState(
     val sincronizando: Boolean = false,
     val isOnline: Boolean = true,
     val pendingSyncCount: Int = 0,
-    val mensajeError: String? = null
+    val mensajeError: String? = null,
+    val reporteSeleccionadoId: String? = null
 ) {
     val listaVisible: List<Reporte>
         get() = reportesFiltrados ?: reportes
+
+    val reporteSeleccionadoDetalle: Reporte?
+        get() = listaVisible.find { it.idReporte == reporteSeleccionadoId }
+            ?: listaVisible.firstOrNull()
 
     val tieneFiltrosActivos: Boolean
         get() = filtroCategoria != null || filtroEstado != null || filtroSoloUrgentes
@@ -184,6 +189,10 @@ class ReporteViewModel(
                 mensajeError = null
             )
         }
+    }
+
+    fun seleccionarReporteDetalle(idReporte: String) {
+        _uiState.update { it.copy(reporteSeleccionadoId = idReporte) }
     }
 
     private fun calcularFiltradosPropios(estado: ListaReportesUiState): List<Reporte>? {

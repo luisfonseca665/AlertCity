@@ -138,15 +138,20 @@
     <string name="admin_access_denied">No tienes permisos para ver reportes de otra categoría (%1$s)</string>
     <string name="admin_attention_control">Control de atención</string>
     <string name="admin_update_status_prompt">Actualizar estatus del reporte:</string>
-    <string name="admin_urgent_priority_title">Prioridad urgente</string>
-    <string name="admin_urgent_priority_desc">Destaca el reporte en el panel y mapa operativo</string>
     <string name="admin_delete_dialog_title">Eliminar reporte</string>
-    <string name="admin_delete_dialog_msg">¿Seguro que deseas eliminar \"%1$s\"? Esta acción quitará el registro localmente.</string>
+    <string name="admin_delete_dialog_msg">¿Seguro que deseas eliminar \"%1$s\"? Esta acción no se puede deshacer.</string>
     <string name="admin_urgent_pending_banner">%1$d reportes urgentes pendientes de resolver</string>
     <string name="admin_showing">Mostrando</string>
     <string name="admin_filter_action">Filtrar</string>
     <string name="admin_search_placeholder">Buscar por título, categoría o detalle...</string>
     <string name="admin_inbox_header">Bandeja de atención (%1$d)</string>
-    <string name="admin_map_subtitle">%1$s • %2$d de %3$d incidencias</string>
+    <string name="admin_map_subtitle">%1$d incidencias en el mapa</string>
+    <string name="admin_map_filtered_subtitle">%1$d de %2$d incidencias en el mapa</string>
     <string name="admin_map_shown_subtitle">%1$d incidencias mostradas</string>
+    <string name="map_approx_location_suffix"> (Ubicación aprox.)</string>
+    <string name="preview_image_default_title">Vista previa de imagen</string>
+    <string name="preview_close">Cerrar</string>
+    <string name="preview_done">Listo</string>
+    <string name="preview_zoom_hint">Pellizca o toca dos veces para hacer zoom</string>
+    <string name="preview_recenter_location">Recentrar ubicación</string>
 </resources>

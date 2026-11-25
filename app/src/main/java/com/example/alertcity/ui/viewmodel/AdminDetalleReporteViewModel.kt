@@ -100,19 +100,8 @@ class AdminDetalleReporteViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(actualizando = true) }
-            repository.updateReport(reporteActual.copy(estado = nuevoEstado))
+            repository.updateReportState(reporteActual.idReporte, nuevoEstado)
             _uiState.update { it.copy(actualizando = false) }
-        }
-    }
-
-    fun cambiarUrgencia(esUrgente: Boolean) {
-        val reporteActual = _uiState.value.reporte ?: return
-        if (reporteActual.esUrgente == esUrgente) return
-        val session = sessionManager.currentSession
-        if (session != null && !session.puedeVerYGeestionarReporte(reporteActual)) return
-
-        viewModelScope.launch {
-            repository.updateReport(reporteActual.copy(esUrgente = esUrgente))
         }
     }
 

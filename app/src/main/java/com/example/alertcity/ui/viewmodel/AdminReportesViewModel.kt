@@ -46,22 +46,25 @@ data class AdminReportesUiState(
     val rolLegible: String = "Operador",
     val nombreOperador: String = "",
     val categoriaAsignadaUi: String? = null,
+    val reporteSeleccionadoDetalleId: String? = null,
     val cargando: Boolean = false
 ) {
+    val reporteSeleccionadoDetalle: Reporte?
+        get() = reportesFiltrados.find { it.idReporte == reporteSeleccionadoDetalleId }
+            ?: reportesFiltrados.firstOrNull()
+
     val tituloPanel: String
-        get() = categoriaAsignadaUi?.let { "Panel · $it" } ?: "Panel de Gestión"
+        get() = categoriaAsignadaUi ?: "Panel de Gestión"
 
     val subtituloPanel: String
-        get() = buildString {
-            append(rolLegible)
-            if (nombreOperador.isNotBlank()) {
-                append(" • ")
-                append(nombreOperador)
-            }
+        get() = when {
+            categoriaAsignadaUi != null && nombreOperador.isNotBlank() -> "Operador • $nombreOperador"
+            nombreOperador.isNotBlank() -> "$rolLegible • $nombreOperador"
+            else -> rolLegible
         }
 
     val tituloMapa: String
-        get() = categoriaAsignadaUi?.let { "Mapa · $it" } ?: "Mapa de Gestión"
+        get() = categoriaAsignadaUi?.let { "Mapa • $it" } ?: "Mapa Operativo"
 }
 
 class AdminReportesViewModel(
@@ -111,12 +114,7 @@ class AdminReportesViewModel(
     }
 
     private suspend fun sincronizarReportesDeRol() {
-        val categoriaBackend = sessionManager.currentSession?.categoriaBackendAsignada
-        if (categoriaBackend != null) {
-            repository.getFilteredReports(category = categoriaBackend)
-        } else {
-            repository.refreshReports()
-        }
+        repository.refreshReports()
     }
 
     fun refrescar() {
@@ -135,6 +133,10 @@ class AdminReportesViewModel(
 
     fun onMostrarPreviewMapaChange(mostrar: Boolean) {
         _uiState.update { it.copy(mostrarPreviewMapa = mostrar) }
+    }
+
+    fun seleccionarReporteDetalle(idReporte: String) {
+        _uiState.update { it.copy(reporteSeleccionadoDetalleId = idReporte) }
     }
 
     fun onBusquedaChange(nuevaBusqueda: String) {
@@ -210,7 +212,7 @@ class AdminReportesViewModel(
         val session = sessionManager.currentSession
         if (session != null && !session.puedeVerYGeestionarReporte(reporte)) return
         viewModelScope.launch {
-            repository.updateReport(reporte.copy(estado = nuevoEstado))
+            repository.updateReportState(reporte.idReporte, nuevoEstado)
         }
     }
 
@@ -221,25 +223,6 @@ class AdminReportesViewModel(
             EstadoReporte.RESUELTO -> EstadoReporte.RESUELTO
         }
         cambiarEstadoReporte(reporte, siguiente)
-    }
-
-    fun cambiarUrgenciaReporte(reporte: Reporte, esUrgente: Boolean) {
-        if (reporte.esUrgente == esUrgente) return
-        val session = sessionManager.currentSession
-        if (session != null && !session.puedeVerYGeestionarReporte(reporte)) return
-        viewModelScope.launch {
-            repository.updateReport(reporte.copy(esUrgente = esUrgente))
-        }
-    }
-
-    fun eliminarReporte(idReporte: String, onEliminado: () -> Unit = {}) {
-        val reporte = _uiState.value.todosLosReportes.find { it.idReporte == idReporte } ?: return
-        val session = sessionManager.currentSession
-        if (session != null && !session.puedeVerYGeestionarReporte(reporte)) return
-        viewModelScope.launch {
-            repository.deleteReport(idReporte)
-            onEliminado()
-        }
     }
 
     private fun recalcularEstado(estado: AdminReportesUiState): AdminReportesUiState {

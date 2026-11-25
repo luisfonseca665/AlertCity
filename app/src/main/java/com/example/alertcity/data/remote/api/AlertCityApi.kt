@@ -13,6 +13,7 @@ import okhttp3.MultipartBody
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
@@ -100,4 +101,10 @@ interface AlertCityApi {
         @Path("id") reportId: String,
         @Part file: MultipartBody.Part
     ): Response<ReportResponse>
+
+    // Elimina un reporte en el Backend y BD PostgreSQL/PostGIS
+    @DELETE("api/v1/reports/{id}")
+    suspend fun deleteReport(
+        @Path("id") reportId: String
+    ): Response<Unit>
 }

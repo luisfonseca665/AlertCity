@@ -45,9 +45,22 @@ object NetworkConstants {
 
     fun resolveMediaUrl(imageUrl: String?): String? {
         if (imageUrl.isNullOrBlank()) return null
-        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("file://") || imageUrl.startsWith("content://")) {
-            return imageUrl
+        val clean = imageUrl.trim()
+        if (clean.startsWith("file://") || clean.startsWith("content://")) {
+            return clean
         }
-        return BASE_URL.trimEnd('/') + "/" + imageUrl.trimStart('/')
+        if (clean.startsWith("http://") || clean.startsWith("https://")) {
+            // Si el backend detrás de un proxy generó http://localhost o http://127.0.0.1, reemplazar por BASE_URL actual
+            val localRegex = Regex("^https?://(localhost|127\\.0\\.0\\.1|10\\.0\\.2\\.2)(:\\d+)?/", RegexOption.IGNORE_CASE)
+            if (localRegex.containsMatchIn(clean)) {
+                return clean.replaceFirst(localRegex, BASE_URL)
+            }
+            // Si es el host de Azure o el host actual en la nube pero vino con http://, elevar a https://
+            if (clean.startsWith("http://") && (clean.contains(".azurewebsites.net", ignoreCase = true) || isCloudHost())) {
+                return "https://" + clean.removePrefix("http://")
+            }
+            return clean
+        }
+        return BASE_URL.trimEnd('/') + "/" + clean.trimStart('/')
     }
 }

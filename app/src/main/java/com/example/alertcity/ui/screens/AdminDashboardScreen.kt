@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -44,23 +46,101 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alertcity.R
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.ui.components.AdminTopBar
+import com.example.alertcity.ui.components.AlertCityContentType
 import com.example.alertcity.ui.components.ReporteItemCard
-import com.example.alertcity.ui.components.esPantallaGrande
+import com.example.alertcity.ui.viewmodel.AdminDetalleReporteViewModel
+import com.example.alertcity.ui.viewmodel.AdminReportesUiState
 import com.example.alertcity.ui.viewmodel.AdminReportesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
     viewModel: AdminReportesViewModel,
+    contentType: AlertCityContentType = AlertCityContentType.LIST_ONLY,
     onReporteClick: (String) -> Unit,
     onCerrarSesion: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val pantallaGrande = esPantallaGrande()
 
+    if (contentType == AlertCityContentType.LIST_AND_DETAIL) {
+        // Patrón oficial del codelab: Lista y Detalle lado a lado en pantallas grandes (Expanded)
+        val adminDetalleViewModel: AdminDetalleReporteViewModel = viewModel(
+            factory = AdminDetalleReporteViewModel.Factory
+        )
+        val seleccionadoId = uiState.reporteSeleccionadoDetalle?.idReporte
+        LaunchedEffect(seleccionadoId) {
+            adminDetalleViewModel.cargarReporte(seleccionadoId)
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
+                BandejaReportesAdminContenido(
+                    uiState = uiState,
+                    viewModel = viewModel,
+                    seleccionadoDetalleId = seleccionadoId,
+                    onReporteClick = { id -> viewModel.seleccionarReporteDetalle(id) },
+                    onCerrarSesion = onCerrarSesion
+                )
+            }
+
+            VerticalDivider(modifier = Modifier.fillMaxHeight())
+
+            Box(
+                modifier = Modifier
+                    .weight(1.1f)
+                    .fillMaxHeight()
+            ) {
+                if (seleccionadoId != null) {
+                    AdminDetalleReporteScreen(
+                        viewModel = adminDetalleViewModel,
+                        onBack = {},
+                        mostrarNavegacionAtras = false
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.no_filtered_reports),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    } else {
+        BandejaReportesAdminContenido(
+            uiState = uiState,
+            viewModel = viewModel,
+            seleccionadoDetalleId = null,
+            onReporteClick = onReporteClick,
+            onCerrarSesion = onCerrarSesion
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BandejaReportesAdminContenido(
+    uiState: AdminReportesUiState,
+    viewModel: AdminReportesViewModel,
+    seleccionadoDetalleId: String?,
+    onReporteClick: (String) -> Unit,
+    onCerrarSesion: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -72,7 +152,6 @@ fun AdminDashboardScreen(
             onCerrarSesion = onCerrarSesion
         )
 
-        // Resumen ejecutivo por estatus (estilo develop)
         ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth()
@@ -156,7 +235,6 @@ fun AdminDashboardScreen(
             }
         }
 
-        // Buscador
         OutlinedTextField(
             value = uiState.busqueda,
             onValueChange = viewModel::onBusquedaChange,
@@ -176,7 +254,6 @@ fun AdminDashboardScreen(
                 .padding(horizontal = 16.dp, vertical = 6.dp)
         )
 
-        // Filtros rápidos por estatus y urgencia
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -276,32 +353,12 @@ fun AdminDashboardScreen(
                             )
                         }
                     }
-                } else if (pantallaGrande) {
-                    val filas = uiState.reportesFiltrados.chunked(2)
-                    items(filas, key = { fila -> fila.first().idReporte }) { fila ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            fila.forEach { reporte ->
-                                ReporteItemCard(
-                                    reporte = reporte,
-                                    onClick = { onReporteClick(reporte.idReporte) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            if (fila.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                    }
                 } else {
                     items(uiState.reportesFiltrados, key = { it.idReporte }) { reporte ->
                         ReporteItemCard(
                             reporte = reporte,
                             onClick = { onReporteClick(reporte.idReporte) },
+                            seleccionado = seleccionadoDetalleId == reporte.idReporte,
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
                     }

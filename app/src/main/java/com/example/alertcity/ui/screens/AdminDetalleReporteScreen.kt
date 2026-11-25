@@ -42,7 +42,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -75,7 +74,8 @@ import com.example.alertcity.ui.viewmodel.AdminDetalleReporteViewModel
 @Composable
 fun AdminDetalleReporteScreen(
     viewModel: AdminDetalleReporteViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    mostrarNavegacionAtras: Boolean = true
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val reporte = uiState.reporte
@@ -93,8 +93,10 @@ fun AdminDetalleReporteScreen(
                 )
             },
             navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(id = R.string.action_back))
+                if (mostrarNavegacionAtras) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(id = R.string.action_back))
+                    }
                 }
             },
             actions = {
@@ -162,7 +164,9 @@ fun AdminDetalleReporteScreen(
             } ?: emptyList()
         }
 
-        val fotoActual = reporte.localFotoUri?.takeIf { it.isNotBlank() } ?: reporte.fotoUri
+        val fotoActual = reporte.fotoUri?.takeIf { it.startsWith("http") }
+            ?: reporte.localFotoUri?.takeIf { it.isNotBlank() }
+            ?: reporte.fotoUri
         val esResuelto = reporte.estado == EstadoReporte.RESUELTO
 
         Box(
@@ -192,7 +196,7 @@ fun AdminDetalleReporteScreen(
                     ) {
                         AsyncImage(
                             model = fotoActual,
-                            contentDescription = "Evidencia fotográfica",
+                            contentDescription = stringResource(id = R.string.create_photo_section),
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -213,7 +217,7 @@ fun AdminDetalleReporteScreen(
                         )
 
                         Text(
-                            text = "Evidencia fotográfica",
+                            text = stringResource(id = R.string.create_photo_section),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
@@ -241,7 +245,7 @@ fun AdminDetalleReporteScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Ver imagen",
+                                    text = stringResource(id = R.string.detail_view_image),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -251,7 +255,7 @@ fun AdminDetalleReporteScreen(
                 }
             }
 
-            // 2. Panel administrativo de control de atención y prioridad
+            // 2. Panel administrativo de control de atención
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -273,7 +277,7 @@ fun AdminDetalleReporteScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Control de atención",
+                            text = stringResource(id = R.string.admin_attention_control),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
@@ -318,7 +322,7 @@ fun AdminDetalleReporteScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
-                        text = "Actualizar estatus del reporte:",
+                        text = stringResource(id = R.string.admin_update_status_prompt),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -335,44 +339,6 @@ fun AdminDetalleReporteScreen(
                                 seleccionado = reporte.estado == estado,
                                 onClick = { viewModel.cambiarEstado(estado) },
                                 modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Surface(
-                        onClick = { viewModel.cambiarUrgencia(!reporte.esUrgente) },
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (reporte.esUrgente) {
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                        }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Prioridad urgente",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = "Destaca el reporte en el panel y mapa operativo",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Switch(
-                                checked = reporte.esUrgente,
-                                onCheckedChange = viewModel::cambiarUrgencia
                             )
                         }
                     }
@@ -424,7 +390,7 @@ fun AdminDetalleReporteScreen(
                                     )
                                     Spacer(modifier = Modifier.width(2.dp))
                                     Text(
-                                        text = "Urgente",
+                                        text = stringResource(id = R.string.label_urgent),
                                         color = MaterialTheme.colorScheme.onErrorContainer,
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold
@@ -460,7 +426,7 @@ fun AdminDetalleReporteScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = "Fecha",
+                                    contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -483,7 +449,7 @@ fun AdminDetalleReporteScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Schedule,
-                                    contentDescription = "Hora",
+                                    contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -518,7 +484,7 @@ fun AdminDetalleReporteScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Descripción del ciudadano",
+                            text = stringResource(id = R.string.detail_citizen_description_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -556,7 +522,7 @@ fun AdminDetalleReporteScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Ubicación georreferenciada",
+                                text = stringResource(id = R.string.detail_geo_location_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -574,7 +540,7 @@ fun AdminDetalleReporteScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Ampliar",
+                                    text = stringResource(id = R.string.action_expand),
                                     style = MaterialTheme.typography.labelLarge
                                 )
                             }
@@ -601,7 +567,7 @@ fun AdminDetalleReporteScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
                                     text = reporte.ubicacion?.takeIf { it.isNotBlank() }
-                                        ?: "Sin ubicación exacta registrada",
+                                        ?: stringResource(id = R.string.detail_no_exact_location),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

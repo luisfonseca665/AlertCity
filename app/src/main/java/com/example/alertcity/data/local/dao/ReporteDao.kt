@@ -21,7 +21,10 @@ interface ReporteDao {
     @Query("SELECT * FROM reportes WHERE syncStatus IN ('SYNC_PENDING', 'SYNC_ERROR') ORDER BY fechaCreacion ASC")
     suspend fun getPendingSyncReports(): List<ReporteEntity>
 
-    @Query("SELECT COUNT(*) FROM reportes WHERE syncStatus IN ('SYNC_PENDING', 'SYNC_ERROR')")
+    @Query("SELECT * FROM reportes WHERE syncStatus = 'SYNCED' AND localFotoUri IS NOT NULL AND (fotoUri IS NULL OR fotoUri NOT LIKE 'http%')")
+    suspend fun getSyncedReportsWithPendingPhoto(): List<ReporteEntity>
+
+    @Query("SELECT COUNT(*) FROM reportes WHERE syncStatus IN ('SYNC_PENDING', 'SYNC_ERROR') OR (syncStatus = 'SYNCED' AND localFotoUri IS NOT NULL AND (fotoUri IS NULL OR fotoUri NOT LIKE 'http%'))")
     fun observePendingSyncCount(): Flow<Int>
 
     @Query("SELECT idReporte FROM reportes WHERE syncStatus != 'SYNCED'")
@@ -32,6 +35,9 @@ interface ReporteDao {
 
     @Query("DELETE FROM reportes WHERE idReporte = :idReporte")
     suspend fun deleteReportById(idReporte: String)
+
+    @Query("DELETE FROM reportes WHERE syncStatus = 'SYNCED'")
+    suspend fun deleteAllSyncedReports()
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addReport(reporte: ReporteEntity)
@@ -55,6 +61,27 @@ interface ReporteDao {
         if (remoteEntities.isEmpty()) return
         val protectedIds = getNonSyncedIds().toSet()
         val safeToInsert = remoteEntities.filterNot { it.idReporte in protectedIds }
+        if (safeToInsert.isNotEmpty()) {
+            insertAll(safeToInsert)
+        }
+    }
+
+    @Transaction
+    suspend fun replaceAllSyncedReports(remoteEntities: List<ReporteEntity>) {
+        val protectedIds = getNonSyncedIds().toSet()
+        val pendingLocalPhotosById = getSyncedReportsWithPendingPhoto()
+            .associate { it.idReporte to it.localFotoUri }
+        deleteAllSyncedReports()
+        val safeToInsert = remoteEntities
+            .filterNot { it.idReporte in protectedIds }
+            .map { entity ->
+                val pendingLocal = pendingLocalPhotosById[entity.idReporte]
+                if (entity.fotoUri.isNullOrBlank() && !pendingLocal.isNullOrBlank()) {
+                    entity.copy(fotoUri = pendingLocal, localFotoUri = pendingLocal)
+                } else {
+                    entity
+                }
+            }
         if (safeToInsert.isNotEmpty()) {
             insertAll(safeToInsert)
         }

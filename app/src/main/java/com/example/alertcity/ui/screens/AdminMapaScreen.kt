@@ -38,10 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.alertcity.R
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.ui.components.AdminTopBar
@@ -62,8 +64,9 @@ fun AdminMapaScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val seleccionadoId = uiState.reporteSeleccionadoMapa?.idReporte
+    val sufijoUbicacionAprox = stringResource(id = R.string.map_approx_location_suffix)
 
-    val pines = remember(uiState.marcadoresMapa, seleccionadoId) {
+    val pines = remember(uiState.marcadoresMapa, seleccionadoId, sufijoUbicacionAprox) {
         uiState.marcadoresMapa.map { marcador ->
             PinMapaUi(
                 id = marcador.reporte.idReporte,
@@ -72,10 +75,17 @@ fun AdminMapaScreen(
                 colorHex = colorHexPorReporte(marcador.reporte),
                 titulo = marcador.reporte.titulo,
                 descripcion = "${marcador.reporte.categoria} • ${marcador.reporte.fechaHoraFormateada} • ${marcador.reporte.estado.etiqueta}" +
-                    if (!marcador.tieneUbicacionExacta) " (Ubicación aprox.)" else "",
+                    if (!marcador.tieneUbicacionExacta) sufijoUbicacionAprox else "",
                 mostrarInfoWindow = seleccionadoId == marcador.reporte.idReporte
             )
         }
+    }
+
+    val tieneFiltroMapa = uiState.mapaFiltroEstado != null || uiState.mapaSoloUrgentes
+    val subtituloMapa = if (tieneFiltroMapa) {
+        stringResource(id = R.string.admin_map_filtered_subtitle, uiState.marcadoresMapa.size, uiState.totalReportes)
+    } else {
+        stringResource(id = R.string.admin_map_subtitle, uiState.marcadoresMapa.size)
     }
 
     Column(
@@ -85,7 +95,7 @@ fun AdminMapaScreen(
     ) {
         AdminTopBar(
             titulo = uiState.tituloMapa,
-            subtitulo = stringResource(id = R.string.admin_map_subtitle, uiState.rolLegible, uiState.marcadoresMapa.size, uiState.totalReportes),
+            subtitulo = subtituloMapa,
             onCerrarSesion = onCerrarSesion
         )
 
@@ -189,12 +199,15 @@ fun AdminMapaScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.MyLocation,
-                    contentDescription = "Centrar vista general"
+                    contentDescription = stringResource(id = R.string.preview_recenter_location)
                 )
             }
 
             uiState.reporteSeleccionadoMapa?.let { seleccionado ->
                 val esResuelto = seleccionado.estado == EstadoReporte.RESUELTO
+                val fotoSeleccionado = seleccionado.fotoUri?.takeIf { it.startsWith("http") }
+                    ?: seleccionado.localFotoUri?.takeIf { it.isNotBlank() }
+                    ?: seleccionado.fotoUri
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -207,6 +220,17 @@ fun AdminMapaScreen(
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (!fotoSeleccionado.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = fotoSeleccionado,
+                                    contentDescription = stringResource(id = R.string.create_photo_section),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                            }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = seleccionado.titulo,
@@ -229,7 +253,7 @@ fun AdminMapaScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Cerrar selección",
+                                    contentDescription = stringResource(id = R.string.preview_close),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -273,7 +297,7 @@ fun AdminMapaScreen(
                                         color = MaterialTheme.colorScheme.errorContainer
                                     ) {
                                         Text(
-                                            text = "URGENTE",
+                                            text = stringResource(id = R.string.badge_urgent),
                                             color = MaterialTheme.colorScheme.onErrorContainer,
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,

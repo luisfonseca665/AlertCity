@@ -139,15 +139,20 @@
     <string name="admin_access_denied">You do not have permission to view reports from another category (%1$s)</string>
     <string name="admin_attention_control">Attention control</string>
     <string name="admin_update_status_prompt">Update report status:</string>
-    <string name="admin_urgent_priority_title">Urgent priority</string>
-    <string name="admin_urgent_priority_desc">Highlights the report on the operational dashboard and map</string>
     <string name="admin_delete_dialog_title">Delete report</string>
-    <string name="admin_delete_dialog_msg">Are you sure you want to delete \"%1$s\"? This will remove the local record.</string>
+    <string name="admin_delete_dialog_msg">Are you sure you want to delete \"%1$s\"? This action cannot be undone.</string>
     <string name="admin_urgent_pending_banner">%1$d urgent reports pending resolution</string>
     <string name="admin_showing">Showing</string>
     <string name="admin_filter_action">Filter</string>
     <string name="admin_search_placeholder">Search by title, category or details...</string>
     <string name="admin_inbox_header">Attention inbox (%1$d)</string>
-    <string name="admin_map_subtitle">%1$s • %2$d of %3$d incidents</string>
+    <string name="admin_map_subtitle">%1$d incidents on the map</string>
+    <string name="admin_map_filtered_subtitle">%1$d of %2$d incidents on the map</string>
     <string name="admin_map_shown_subtitle">%1$d incidents shown</string>
+    <string name="map_approx_location_suffix"> (Approx. location)</string>
+    <string name="preview_image_default_title">Image preview</string>
+    <string name="preview_close">Close</string>
+    <string name="preview_done">Done</string>
+    <string name="preview_zoom_hint">Pinch or double-tap to zoom</string>
+    <string name="preview_recenter_location">Recenter location</string>
 </resources>

@@ -44,11 +44,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.alertcity.R
 import com.example.alertcity.data.location.LocationHelper
 import com.example.alertcity.ui.components.COLOR_PIN_ACTIVO
@@ -85,7 +87,8 @@ fun HistoricoReportesScreen(
     }
 
     val seleccionadoId = uiState.reporteSeleccionado?.idReporte
-    val pines = remember(uiState.marcadores, seleccionadoId) {
+    val sufijoUbicacionAprox = stringResource(id = R.string.map_approx_location_suffix)
+    val pines = remember(uiState.marcadores, seleccionadoId, sufijoUbicacionAprox) {
         uiState.marcadores.map { marcador ->
             PinMapaUi(
                 id = marcador.reporte.idReporte,
@@ -94,7 +97,7 @@ fun HistoricoReportesScreen(
                 colorHex = colorHexPorReporte(marcador.reporte),
                 titulo = marcador.reporte.titulo,
                 descripcion = "${marcador.reporte.categoria} • ${marcador.reporte.fechaHoraFormateada} • ${marcador.reporte.estado.etiqueta}" +
-                    if (!marcador.tieneUbicacionExacta) " (Ubicación aprox.)" else "",
+                    if (!marcador.tieneUbicacionExacta) sufijoUbicacionAprox else "",
                 mostrarInfoWindow = seleccionadoId == marcador.reporte.idReporte
             )
         }
@@ -416,6 +419,9 @@ private fun MapaIncidenciasCard(
         }
 
         uiState.reporteSeleccionado?.let { seleccionado ->
+            val fotoSeleccionado = seleccionado.fotoUri?.takeIf { it.startsWith("http") }
+                ?: seleccionado.localFotoUri?.takeIf { it.isNotBlank() }
+                ?: seleccionado.fotoUri
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -430,6 +436,17 @@ private fun MapaIncidenciasCard(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (!fotoSeleccionado.isNullOrBlank()) {
+                        AsyncImage(
+                            model = fotoSeleccionado,
+                            contentDescription = stringResource(id = R.string.create_photo_section),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                    }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = seleccionado.titulo,
@@ -455,7 +472,7 @@ private fun MapaIncidenciasCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = null,
+                            contentDescription = stringResource(id = R.string.preview_close),
                             modifier = Modifier.size(16.dp)
                         )
                     }

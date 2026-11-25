@@ -77,7 +77,8 @@ import com.example.alertcity.ui.viewmodel.DetalleReporteViewModel
 @Composable
 fun DetalleReporteScreen(
     viewModel: DetalleReporteViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    mostrarTopBar: Boolean = true
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val reporte = uiState.reporte
@@ -94,23 +95,25 @@ fun DetalleReporteScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(id = R.string.detail_title),
-                        fontWeight = FontWeight.Bold
+            if (mostrarTopBar) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(id = R.string.detail_title),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(id = R.string.action_back))
+                        }
+                    },
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(id = R.string.action_back))
-                    }
-                },
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
                 )
-            )
+            }
         }
     ) { padding ->
         if (reporte == null) {
@@ -175,7 +178,9 @@ fun DetalleReporteScreen(
             } ?: emptyList()
         }
 
-        val fotoActual = reporte.localFotoUri?.takeIf { it.isNotBlank() } ?: reporte.fotoUri
+        val fotoActual = reporte.fotoUri?.takeIf { it.startsWith("http") }
+            ?: reporte.localFotoUri?.takeIf { it.isNotBlank() }
+            ?: reporte.fotoUri
 
         Box(
             modifier = Modifier
@@ -244,7 +249,13 @@ fun DetalleReporteScreen(
                             onClick = viewModel::reintentarSincronizacion,
                             enabled = !uiState.sincronizando
                         ) {
-                            Text(if (uiState.sincronizando) "Sincronizando..." else "Reintentar sincronización")
+                            Text(
+                                if (uiState.sincronizando) {
+                                    stringResource(id = R.string.sync_retrying)
+                                } else {
+                                    stringResource(id = R.string.sync_retry)
+                                }
+                            )
                         }
                     }
                 }
@@ -265,7 +276,7 @@ fun DetalleReporteScreen(
                     ) {
                         AsyncImage(
                             model = fotoActual,
-                            contentDescription = "Evidencia fotográfica",
+                            contentDescription = stringResource(id = R.string.create_photo_section),
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -286,7 +297,7 @@ fun DetalleReporteScreen(
                         )
 
                         Text(
-                            text = "Evidencia fotográfica",
+                            text = stringResource(id = R.string.create_photo_section),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
@@ -314,7 +325,7 @@ fun DetalleReporteScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Ver imagen",
+                                    text = stringResource(id = R.string.detail_view_image),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -369,7 +380,7 @@ fun DetalleReporteScreen(
                                     )
                                     Spacer(modifier = Modifier.width(2.dp))
                                     Text(
-                                        text = "Urgente",
+                                        text = stringResource(id = R.string.label_urgent),
                                         color = MaterialTheme.colorScheme.onErrorContainer,
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold
@@ -405,7 +416,7 @@ fun DetalleReporteScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = "Fecha",
+                                    contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -428,7 +439,7 @@ fun DetalleReporteScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Schedule,
-                                    contentDescription = "Hora",
+                                    contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -456,7 +467,7 @@ fun DetalleReporteScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Estatus de atención",
+                                    text = stringResource(id = R.string.detail_status_label),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -519,7 +530,7 @@ fun DetalleReporteScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Descripción",
+                            text = stringResource(id = R.string.detail_description_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -557,7 +568,7 @@ fun DetalleReporteScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Ubicación",
+                                text = stringResource(id = R.string.detail_location_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -575,7 +586,7 @@ fun DetalleReporteScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Ampliar",
+                                    text = stringResource(id = R.string.action_expand),
                                     style = MaterialTheme.typography.labelLarge
                                 )
                             }
@@ -602,7 +613,7 @@ fun DetalleReporteScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
                                     text = reporte.ubicacion?.takeIf { it.isNotBlank() }
-                                        ?: "Sin ubicación exacta registrada",
+                                        ?: stringResource(id = R.string.detail_no_exact_location),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

@@ -42,17 +42,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.example.alertcity.R
 
 @Composable
 fun ImagenPreviewDialog(
     imagenUri: String,
-    titulo: String = "Vista previa de imagen",
+    titulo: String = stringResource(id = R.string.preview_image_default_title),
     onDismiss: () -> Unit
 ) {
     var escala by remember { mutableFloatStateOf(1f) }
@@ -136,7 +138,7 @@ fun ImagenPreviewDialog(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Cerrar vista previa",
+                            contentDescription = stringResource(id = R.string.preview_close),
                             tint = Color.White
                         )
                     }
@@ -163,7 +165,7 @@ fun ImagenPreviewDialog(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Pellizca o toca dos veces para hacer zoom",
+                        text = stringResource(id = R.string.preview_zoom_hint),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
@@ -230,7 +232,7 @@ fun MapaPreviewDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Cerrar mapa"
+                            contentDescription = stringResource(id = R.string.preview_close)
                         )
                     }
                 }
@@ -264,7 +266,7 @@ fun MapaPreviewDialog(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.MyLocation,
-                                contentDescription = "Recentrar ubicación"
+                                contentDescription = stringResource(id = R.string.preview_recenter_location)
                             )
                         }
                     }
@@ -280,7 +282,13 @@ fun MapaPreviewDialog(
                         onClick = onDismiss,
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(if (onMapClick != null) "Listo" else "Cerrar")
+                        Text(
+                            if (onMapClick != null) {
+                                stringResource(id = R.string.preview_done)
+                            } else {
+                                stringResource(id = R.string.preview_close)
+                            }
+                        )
                     }
                 }
             }

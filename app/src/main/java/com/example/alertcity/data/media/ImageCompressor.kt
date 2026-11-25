@@ -19,8 +19,8 @@ import okhttp3.RequestBody.Companion.asRequestBody
 object ImageCompressor {
 
     private const val TAG = "ImageCompressor"
-    private const val MAX_IMAGE_DIM = 1600
-    private const val JPEG_QUALITY = 82
+    private const val MAX_IMAGE_DIM = 1280
+    private const val JPEG_QUALITY = 80
     private const val PHOTOS_DIR = "reportes_fotos"
 
     /**
@@ -54,8 +54,9 @@ object ImageCompressor {
     ): Pair<MultipartBody.Part, File?>? = withContext(Dispatchers.IO) {
         try {
             val uri = Uri.parse(uriString)
-            if (uri.scheme == "file") {
-                val existingFile = uri.path?.let { File(it) }
+            if (uri.scheme == "file" || uri.scheme.isNullOrBlank()) {
+                val filePath = if (uri.scheme == "file") uri.path else uriString
+                val existingFile = filePath?.let { File(it) }
                 if (existingFile != null && existingFile.exists() && existingFile.length() > 0L) {
                     val isManagedPhoto = existingFile.parentFile?.name == PHOTOS_DIR
                     if (isManagedPhoto) {
@@ -85,9 +86,13 @@ object ImageCompressor {
         val orientation = readExifOrientation(context, sourceUri)
 
         val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        openUriStream(context, sourceUri)?.use { stream ->
+        val boundsStream = openUriStream(context, sourceUri) ?: return false
+        boundsStream.use { stream ->
             BitmapFactory.decodeStream(stream, null, boundsOptions)
-        } ?: return false
+        }
+        if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+            return false
+        }
 
         val sampleSize = calculateInSampleSize(boundsOptions, MAX_IMAGE_DIM, MAX_IMAGE_DIM)
         val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }

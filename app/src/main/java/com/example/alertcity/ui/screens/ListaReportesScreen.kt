@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,10 +47,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alertcity.R
 import com.example.alertcity.data.local.UserSession
+import com.example.alertcity.ui.components.AlertCityContentType
 import com.example.alertcity.ui.components.ReporteItemCard
-import com.example.alertcity.ui.components.esPantallaGrande
+import com.example.alertcity.ui.viewmodel.DetalleReporteViewModel
+import com.example.alertcity.ui.viewmodel.ListaReportesUiState
 import com.example.alertcity.ui.viewmodel.ReporteViewModel
 
 private val FILTROS_CATEGORIA = listOf(
@@ -73,11 +77,11 @@ private val FILTROS_ESTADO = listOf(
 fun ListaReportesScreen(
     viewModel: ReporteViewModel,
     session: UserSession? = null,
+    contentType: AlertCityContentType = AlertCityContentType.LIST_ONLY,
     onCerrarSesion: (() -> Unit)? = null,
     onReporteClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val pantallaGrande = esPantallaGrande()
 
     LaunchedEffect(session?.userId) {
         if (session != null) {
@@ -85,6 +89,82 @@ fun ListaReportesScreen(
         }
     }
 
+    if (contentType == AlertCityContentType.LIST_AND_DETAIL) {
+        // Patrón oficial del codelab: Lista y Detalle lado a lado en pantallas grandes (Expanded)
+        val detalleViewModel: DetalleReporteViewModel = viewModel(factory = DetalleReporteViewModel.Factory)
+        val seleccionadoId = uiState.reporteSeleccionadoDetalle?.idReporte
+        LaunchedEffect(seleccionadoId) {
+            detalleViewModel.cargarReporte(seleccionadoId)
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
+                ListaReportesContenido(
+                    uiState = uiState,
+                    session = session,
+                    viewModel = viewModel,
+                    seleccionadoDetalleId = seleccionadoId,
+                    onCerrarSesion = onCerrarSesion,
+                    onReporteClick = { id -> viewModel.seleccionarReporteDetalle(id) }
+                )
+            }
+
+            VerticalDivider(modifier = Modifier.fillMaxHeight())
+
+            Box(
+                modifier = Modifier
+                    .weight(1.1f)
+                    .fillMaxHeight()
+            ) {
+                if (seleccionadoId != null) {
+                    DetalleReporteScreen(
+                        viewModel = detalleViewModel,
+                        onBack = {},
+                        mostrarTopBar = false
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.no_reports),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    } else {
+        ListaReportesContenido(
+            uiState = uiState,
+            session = session,
+            viewModel = viewModel,
+            seleccionadoDetalleId = null,
+            onCerrarSesion = onCerrarSesion,
+            onReporteClick = onReporteClick
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ListaReportesContenido(
+    uiState: ListaReportesUiState,
+    session: UserSession?,
+    viewModel: ReporteViewModel,
+    seleccionadoDetalleId: String?,
+    onCerrarSesion: (() -> Unit)?,
+    onReporteClick: (String) -> Unit
+) {
     PullToRefreshBox(
         isRefreshing = uiState.cargando || uiState.sincronizando,
         onRefresh = { viewModel.refrescar() },
@@ -379,33 +459,12 @@ fun ListaReportesScreen(
                         )
                     }
                 }
-            } else if (pantallaGrande) {
-                // Cuadrícula de 2 columnas en pantallas grandes (Tablets / Horizontal)
-                val filas = reportesMostrados.chunked(2)
-                items(filas, key = { fila -> fila.first().idReporte }) { fila ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 5.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        fila.forEach { reporte ->
-                            ReporteItemCard(
-                                reporte = reporte,
-                                onClick = { onReporteClick(reporte.idReporte) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        if (fila.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
             } else {
                 items(reportesMostrados, key = { it.idReporte }) { reporte ->
                     ReporteItemCard(
                         reporte = reporte,
                         onClick = { onReporteClick(reporte.idReporte) },
+                        seleccionado = seleccionadoDetalleId == reporte.idReporte,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
                     )
                 }

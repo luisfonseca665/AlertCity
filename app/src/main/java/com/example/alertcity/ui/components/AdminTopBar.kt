@@ -21,9 +21,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.alertcity.R
 
 @Composable
 fun AdminTopBar(
@@ -46,7 +48,7 @@ fun AdminTopBar(
         ) {
             Icon(
                 imageVector = Icons.Default.AdminPanelSettings,
-                contentDescription = "Panel Operativo",
+                contentDescription = stringResource(id = R.string.nav_admin_panel),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(25.dp)
             )
@@ -75,7 +77,7 @@ fun AdminTopBar(
         IconButton(onClick = onCerrarSesion) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Logout,
-                contentDescription = "Cerrar sesión",
+                contentDescription = stringResource(id = R.string.action_logout),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

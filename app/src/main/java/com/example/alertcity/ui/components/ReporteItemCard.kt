@@ -51,7 +51,7 @@ fun ReporteItemCard(
     seleccionado: Boolean = false,
     onUbicarEnMapaClick: (() -> Unit)? = null
 ) {
-    if (onUbicarEnMapaClick != null) {
+    if (onUbicarEnMapaClick != null || seleccionado) {
         OutlinedCard(
             onClick = onClick,
             modifier = modifier.fillMaxWidth(),
@@ -220,30 +220,33 @@ private fun ContenidoTarjetaReporte(
             }
         }
 
-        val fotoMostrar = reporte.localFotoUri?.takeIf { it.isNotBlank() } ?: reporte.fotoUri
-        when {
-            onUbicarEnMapaClick != null -> {
-                IconButton(onClick = onUbicarEnMapaClick) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Ubicar en el mapa",
-                        tint = if (seleccionado) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-            }
-            !fotoMostrar.isNullOrBlank() -> {
-                Spacer(modifier = Modifier.width(10.dp))
-                AsyncImage(
-                    model = fotoMostrar,
-                    contentDescription = "Imagen del reporte",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(12.dp))
+        val fotoMostrar = reporte.fotoUri?.takeIf { it.startsWith("http") }
+            ?: reporte.localFotoUri?.takeIf { it.isNotBlank() }
+            ?: reporte.fotoUri
+
+        if (!fotoMostrar.isNullOrBlank()) {
+            Spacer(modifier = Modifier.width(10.dp))
+            AsyncImage(
+                model = fotoMostrar,
+                contentDescription = stringResource(id = R.string.create_photo_section),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+        }
+
+        if (onUbicarEnMapaClick != null) {
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(onClick = onUbicarEnMapaClick) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = stringResource(id = R.string.detail_location_title),
+                    tint = if (seleccionado) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
         }

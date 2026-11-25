@@ -96,7 +96,8 @@ class NetworkBoundReporteRepository(
 
     override suspend fun syncPendingReports(): Result<Int> = syncMutex.withLock {
         val pendingList = dao.getPendingSyncReports()
-        if (pendingList.isEmpty()) {
+        val pendingPhotoList = dao.getSyncedReportsWithPendingPhoto()
+        if (pendingList.isEmpty() && pendingPhotoList.isEmpty()) {
             return@withLock Result.success(0)
         }
 
@@ -106,6 +107,21 @@ class NetworkBoundReporteRepository(
 
         var syncedCount = 0
         var lastTransientError: Exception? = null
+
+        // Reintentar subida de fotos pendientes en reportes ya creados en el servidor
+        for (entityWithPhoto in pendingPhotoList) {
+            val localPhoto = entityWithPhoto.localFotoUri ?: continue
+            val uploadedReport = uploadPhotoWithRetry(entityWithPhoto.idReporte, localPhoto)
+            if (uploadedReport != null && !uploadedReport.imageUrl.isNullOrBlank()) {
+                val updated = ReporteMapper.toEntity(uploadedReport).copy(
+                    localFotoUri = null,
+                    syncStatus = SyncStatus.SYNCED,
+                    syncError = null
+                )
+                dao.addReport(updated)
+                syncedCount++
+            }
+        }
 
         for (entity in pendingList) {
             try {
@@ -145,33 +161,18 @@ class NetworkBoundReporteRepository(
 
                 var reporteRemoto = response.body()!!
                 val localPhoto = entity.localFotoUri
-                    ?: entity.fotoUri?.takeIf { it.startsWith("file://") || it.startsWith("content://") }
+                    ?: entity.fotoUri?.takeIf { it.startsWith("file://") || it.startsWith("content://") || it.startsWith("/") }
 
                 if (!localPhoto.isNullOrBlank()) {
-                    val mediaPart = ImageCompressor.prepareMultipartPart(context, localPhoto)
-                    if (mediaPart != null) {
-                        val (part, tempFile) = mediaPart
-                        try {
-                            val uploadResponse = api.uploadReportMedia(reporteRemoto.reportId, part)
-                            if (uploadResponse.isSuccessful && uploadResponse.body() != null) {
-                                reporteRemoto = uploadResponse.body()!!
-                                Log.d(TAG, "Evidencia fotográfica sincronizada: ${reporteRemoto.imageUrl}")
-                            } else {
-                                Log.w(
-                                    TAG,
-                                    "No se pudo subir foto en sync: ${ApiErrorParser.formatMessage(uploadResponse)}"
-                                )
-                            }
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Excepción al subir foto durante sincronización", e)
-                        } finally {
-                            tempFile?.delete()
-                        }
+                    val uploaded = uploadPhotoWithRetry(reporteRemoto.reportId, localPhoto)
+                    if (uploaded != null) {
+                        reporteRemoto = uploaded
                     }
                 }
 
+                val photoUploadedToServer = !reporteRemoto.imageUrl.isNullOrBlank()
                 val syncedEntity = ReporteMapper.toEntity(reporteRemoto).let { mapped ->
-                    if (mapped.fotoUri.isNullOrBlank() && !localPhoto.isNullOrBlank()) {
+                    if (!photoUploadedToServer && !localPhoto.isNullOrBlank()) {
                         mapped.copy(
                             fotoUri = localPhoto,
                             localFotoUri = localPhoto,
@@ -180,7 +181,7 @@ class NetworkBoundReporteRepository(
                         )
                     } else {
                         mapped.copy(
-                            localFotoUri = localPhoto,
+                            localFotoUri = null,
                             syncStatus = SyncStatus.SYNCED,
                             syncError = null
                         )
@@ -209,6 +210,38 @@ class NetworkBoundReporteRepository(
         }
     }
 
+    private suspend fun uploadPhotoWithRetry(
+        reportId: String,
+        localPhotoUri: String
+    ): com.example.alertcity.data.remote.model.ReportResponse? {
+        repeat(2) { attempt ->
+            val mediaPart = ImageCompressor.prepareMultipartPart(context, localPhotoUri)
+            if (mediaPart == null) {
+                Log.w(TAG, "No se pudo preparar archivo local para subir foto: $localPhotoUri")
+                return null
+            }
+            val (part, tempFile) = mediaPart
+            try {
+                val uploadResponse = api.uploadReportMedia(reportId, part)
+                if (uploadResponse.isSuccessful && uploadResponse.body() != null) {
+                    val updated = uploadResponse.body()!!
+                    Log.d(TAG, "Evidencia fotográfica sincronizada en intento ${attempt + 1}: ${updated.imageUrl}")
+                    return updated
+                } else {
+                    Log.w(
+                        TAG,
+                        "Fallo al subir foto (intento ${attempt + 1}, HTTP ${uploadResponse.code()}): ${ApiErrorParser.formatMessage(uploadResponse)}"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Excepción al subir foto (intento ${attempt + 1})", e)
+            } finally {
+                tempFile?.delete()
+            }
+        }
+        return null
+    }
+
     override suspend fun refreshReports(): Result<Unit> {
         return try {
             syncPendingReports()
@@ -218,7 +251,7 @@ class NetworkBoundReporteRepository(
                 val reportesRemotos = response.body().orEmpty()
                 Log.d(TAG, "Reportes recibidos del backend: ${reportesRemotos.size}")
                 val entidades = reportesRemotos.map { ReporteMapper.toEntity(it) }
-                dao.upsertRemoteReports(entidades)
+                dao.replaceAllSyncedReports(entidades)
                 Result.success(Unit)
             } else {
                 val errorMsg = ApiErrorParser.formatMessage(response, "Error al consultar reportes")
@@ -239,10 +272,12 @@ class NetworkBoundReporteRepository(
                 val body = response.body()!!
                 val allEntities = body.allReports.map { ReporteMapper.toEntity(it) }
                 val myEntities = body.myReports.map { ReporteMapper.toEntity(it) }
-                val combined = (allEntities + myEntities).distinctBy { it.idReporte }
-                if (combined.isNotEmpty()) {
-                    dao.upsertRemoteReports(combined)
-                }
+                val combined = (myEntities + allEntities)
+                    .groupBy { it.idReporte }
+                    .map { (_, items) ->
+                        items.firstOrNull { !it.fotoUri.isNullOrBlank() } ?: items.first()
+                    }
+                dao.replaceAllSyncedReports(combined)
                 Result.success(
                     DashboardResumen(
                         myActiveReportsCount = body.myActiveReportsCount,
@@ -252,9 +287,8 @@ class NetworkBoundReporteRepository(
                     )
                 )
             } else {
-                val errorMsg = ApiErrorParser.formatMessage(response, "Error al cargar el dashboard")
-                Log.w(TAG, errorMsg)
-                Result.failure(Exception(errorMsg))
+                refreshReports()
+                Result.success(buildLocalDashboardFallback())
             }
         } catch (e: Exception) {
             Log.w(TAG, "Sin conexión para cargar dashboard remoto; usando caché local de Room", e)
@@ -380,6 +414,16 @@ class NetworkBoundReporteRepository(
     override suspend fun deleteReport(idReporte: String): Result<Unit> {
         return try {
             dao.deleteReportById(idReporte)
+            if (networkMonitor?.checkCurrentlyOnline() != false) {
+                try {
+                    val response = api.deleteReport(idReporte)
+                    if (!response.isSuccessful && response.code() != 404) {
+                        Log.w(TAG, "No se pudo eliminar reporte en el servidor (${response.code()})")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error de red al eliminar reporte en el servidor", e)
+                }
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Error al eliminar reporte localmente en Room", e)

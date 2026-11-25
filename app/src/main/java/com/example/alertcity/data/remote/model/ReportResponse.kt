@@ -14,5 +14,9 @@ data class ReportResponse(
     @SerializedName("longitude") val longitude: Double?,
     @SerializedName("addressReference") val addressReference: String?,
     @SerializedName("state") val state: String,
-    @SerializedName("imageUrl") val imageUrl: String? = null
+    @SerializedName(
+        value = "imageUrl",
+        alternate = ["image_url", "photoUrl", "photo_url", "mediaUrl", "media_url", "fotoUri", "imagenUrl"]
+    )
+    val imageUrl: String? = null
 )

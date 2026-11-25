@@ -3,6 +3,7 @@ package com.example.alertcity.data.local.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.alertcity.data.remote.NetworkConstants
 import com.example.alertcity.domain.model.EstadoReporte
 import com.example.alertcity.domain.model.Reporte
 import com.example.alertcity.domain.model.SyncStatus
@@ -37,7 +38,7 @@ fun ReporteEntity.toDomain(): Reporte = Reporte(
     esUrgente = esUrgente,
     hora = hora,
     fechaCreacion = fechaCreacion,
-    fotoUri = fotoUri ?: localFotoUri,
+    fotoUri = NetworkConstants.resolveMediaUrl(fotoUri) ?: localFotoUri,
     ubicacion = ubicacion,
     estado = estado,
     latitud = latitud,
